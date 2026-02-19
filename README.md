@@ -57,8 +57,34 @@ pytest tests/ -v --tb=short
 | Phase | Status | Description |
 |---|---|---|
 | 0 | ✅ Complete | Project scaffold |
-| 1 | 🔲 Pending | Database layer |
-| 2 | 🔲 Pending | Web scraper |
-| 3 | 🔲 Pending | RAG ingestion |
-| 4 | 🔲 Pending | LangGraph agent |
-| 5 | 🔲 Pending | FastAPI HTTP layer |
+| 1 | ✅ Complete | Database layer (SQLite + FTS5 + sqlite-vec) |
+| 2 | ✅ Complete | Web scraper (httpx + trafilatura + Playwright) |
+| 3 | ✅ Complete | RAG ingestion pipeline |
+| 4 | ✅ Complete | LangGraph researcher agent |
+| 5 | ✅ Complete | FastAPI HTTP layer |
+
+## API Server
+
+Start the server:
+
+```bash
+uvicorn backend.api.app:app --reload
+```
+
+Interactive docs: `http://localhost:8000/docs`
+
+### Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/nodes` | Create a graph node |
+| `GET` | `/nodes` | List nodes (`?type=` filter) |
+| `GET` | `/nodes/graph/all` | All nodes + edges |
+| `GET` | `/nodes/{id}` | Get a single node |
+| `PUT` | `/nodes/{id}` | Update a node |
+| `DELETE` | `/nodes/{id}` | Delete a node |
+| `GET` | `/nodes/{id}/edges` | Edges for a node |
+| `GET` | `/search?q=...&mode=fuzzy\|semantic\|hybrid` | Knowledge-base search |
+| `POST` | `/ingest/url` | Body `{"url":"..."}` → scrape + ingest |
+| `POST` | `/ingest/pdf` | Multipart PDF → ingest |
+| `POST` | `/research` | Body `{"goal":"..."}` → SSE research stream |

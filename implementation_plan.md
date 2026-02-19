@@ -344,24 +344,31 @@ python cli/main.py research --goal "Summarise the current state of solid-state b
 
 ---
 
-### Phase 5 — FastAPI HTTP Layer
+### Phase 5 — FastAPI HTTP Layer ✅ COMPLETE
 
 **Goal:** Wrap all backend operations in a thin REST API so the future frontend (and external scripts) can interact without importing Python directly.
 
 **Dependencies:** Phases 1–4 complete.
 
 #### [NEW] `backend/api/__init__.py`
+Re-exports `app` so callers can do `from backend.api import app`.
 
 #### [NEW] `backend/api/app.py`
-FastAPI app with lifespan handler (opens/closes DB connection).
+FastAPI app with lifespan handler (opens/closes DB connection). Module-level `app` instance used by `uvicorn backend.api.app:app`.
+
+#### [NEW] `backend/api/routers/__init__.py`
+Empty package init.
 
 #### [NEW] `backend/api/routers/nodes.py`
 | Method | Path | Handler |
 |---|---|---|
 | `POST` | `/nodes` | `create_node` |
+| `GET` | `/nodes` | `list_nodes` (optional `?type=` filter) |
+| `GET` | `/nodes/graph/all` | `get_graph_data` (all nodes + edges) |
 | `GET` | `/nodes/{id}` | `get_node` |
+| `PUT` | `/nodes/{id}` | `update_node` |
 | `DELETE` | `/nodes/{id}` | `delete_node` |
-| `GET` | `/nodes` | `list_nodes` |
+| `GET` | `/nodes/{id}/edges` | `get_edges` |
 
 #### [NEW] `backend/api/routers/search.py`
 | Method | Path | Handler |
@@ -398,6 +405,17 @@ curl -X POST http://localhost:8000/research \
   -H "Content-Type: application/json" \
   -d '{"goal": "State of solid-state batteries", "depth": "quick"}'
 ```
+
+> ✅ Server starts cleanly. All 8 routes confirmed via `/openapi.json`. POST `/nodes`, GET `/nodes`, and GET `/search` validated manually. All 114 unit tests continue to pass (Python 3.13.1, pytest 114/114).
+
+**Notes from execution:**
+- `backend/api/routers/` sub-package created (`__init__.py` included); `backend/api/__init__.py` re-exports `app`.
+- FastAPI `0.115.6` rejects `status_code=204` with an implicit body return type — `DELETE /nodes/{id}` returns an explicit `Response(status_code=204)` instead.
+- `/nodes/graph/all` route is registered **before** `/{node_id}` in the router so the literal path is matched first; otherwise `graph` would be captured as the node_id parameter.
+- The `/research` SSE endpoint runs the LangGraph graph in a `ThreadPoolExecutor` thread and communicates progress back to the async event loop via `asyncio.Queue` + `loop.call_soon_threadsafe`. Each graph-node transition is emitted as a `data: {...}\n\n` SSE line.  A `None` sentinel is enqueued when the thread exits (success or error) to terminate the generator.
+- The agent router opens its **own** DB connection per research run (same pattern as `runner.py`) rather than sharing `app.state.db`, since LangGraph's `graph.stream()` is synchronous and long-running.
+- `depth` is accepted in the `/research` request body for API compatibility with the plan spec; the field is passed through but not yet wired to agent behaviour (reserved for future iteration-limit tuning).
+- `X-Accel-Buffering: no` header added to the SSE response to disable nginx proxy buffering in production deployments.
 
 ---
 
