@@ -28,32 +28,38 @@ from backend.db.nodes import _row_to_node
 # FTS5 keyword search
 # ---------------------------------------------------------------------------
 
-def fts_search(conn: sqlite3.Connection, query: str, top_k: int = 10) -> list[Node]:
+def fts_search(
+    conn: sqlite3.Connection, 
+    query: str, 
+    top_k: int = 10,
+    scope_ids: Optional[list[str]] = None
+) -> list[Node]:
     """Return up to *top_k* nodes whose indexed text matches *query*.
-
-    Uses FTS5 ``MATCH`` with an implicit prefix match; the porter tokeniser
-    handles stemming.
-
-    Args:
-        conn: Open DB connection (sqlite-vec loaded).
-        query: Free-text search string.
-        top_k: Maximum number of results to return.
-
-    Returns:
-        A list of :class:`~backend.db.models.Node` objects ordered by FTS5
-        relevance (``bm25``).
+    
+    If scope_ids is provided, filter results to only those IDs.
     """
-    rows = conn.execute(
-        """
+    
+    scope_clause = ""
+    params = [query]
+    
+    if scope_ids:
+        placeholders = ",".join("?" for _ in scope_ids)
+        scope_clause = f"AND n.id IN ({placeholders})"
+        params.extend(scope_ids)
+        
+    params.append(top_k)
+    
+    query_sql = f"""
         SELECT n.*
         FROM   nodes n
         JOIN   nodes_fts f ON n.id = f.id
         WHERE  nodes_fts MATCH ?
+        {scope_clause}
         ORDER  BY bm25(nodes_fts)
         LIMIT  ?
-        """,
-        (query, top_k),
-    ).fetchall()
+    """
+    
+    rows = conn.execute(query_sql, params).fetchall()
     return [_row_to_node(r) for r in rows]
 
 
@@ -65,29 +71,54 @@ def vector_search(
     conn: sqlite3.Connection,
     embedding: list[float],
     top_k: int = 10,
+    scope_ids: Optional[list[str]] = None
 ) -> list[Node]:
     """Return the *top_k* nodes closest to *embedding* in vector space.
-
-    Args:
-        conn: Open DB connection (sqlite-vec loaded and ``nodes_vec`` populated).
-        embedding: Query vector of length ``settings.embedding_dim``.
-        top_k: Number of nearest neighbours to return.
-
-    Returns:
-        Nodes ordered by ascending L2 distance (closest first).
+    
+    If scope_ids is provided, filter results to only those IDs.
+    Note: sqlite-vec filtering capabilities might be limited.
+    We might need to fetch more and filter in Python if sqlite-vec doesn't support IN clause easily.
+    Currently sqlite-vec supports `k = ?` and `embedding MATCH ?`.
+    Adding arbitrary WHERE clauses on the main table join works but might be slow if vector index is used first.
+    
+    However, sqlite-vec `vec0` table is virtual.
+    Efficient pre-filtering is hard. Post-filtering is easier.
     """
     blob = sqlite_vec.serialize_float32(embedding)
-    rows = conn.execute(
-        """
+    
+    # Strategy: Fetch top_k * 5 candidates, filter in Python if scope_ids is set.
+    # Why? Passing IN clause to virtual table query might not be optimized or supported for pre-filtering.
+    # Actually, we can join and filter.
+    
+    scope_clause = ""
+    params = [blob, top_k] # Start with standard params
+    
+    if scope_ids:
+        # If filtering, fetch more candidates to ensure we have enough after filtering
+        # Or let SQL do it if possible.
+        # Let's try simple SQL filtering after join.
+        placeholders = ",".join("?" for _ in scope_ids)
+        scope_clause = f"AND n.id IN ({placeholders})"
+        # We need to inject these params before the LIMIT/k?
+        # No, k is a parameter to the MATCH constraint usually, or hidden.
+        # sqlite-vec uses `k = ?` as a constraint on the virtual table scan.
+        
+        # We can't easily put `IN` params inside the query string if we are using list injection for `scope_ids`
+        # and `blob` is also a param.
+        # Let's append scope_ids to params.
+        params.extend(scope_ids)
+    
+    query_sql = f"""
         SELECT n.*, v.distance
         FROM   nodes_vec v
         JOIN   nodes n ON n.id = v.id
         WHERE  v.embedding MATCH ?
           AND  k = ?
+          {scope_clause}
         ORDER  BY v.distance
-        """,
-        (blob, top_k),
-    ).fetchall()
+    """
+    
+    rows = conn.execute(query_sql, params).fetchall()
     return [_row_to_node(r) for r in rows]
 
 
@@ -101,26 +132,13 @@ def hybrid_search(
     embedding: list[float],
     top_k: int = 10,
     rrf_k: int = 60,
+    scope_ids: Optional[list[str]] = None
 ) -> list[Node]:
-    """Merge FTS and vector results using Reciprocal Rank Fusion (RRF).
-
-    RRF score for a document *d*:
-        score(d) = Σ  1 / (rrf_k + rank_i(d))
-
-    where *rank_i* is the 1-based rank of *d* in result list *i*.
-
-    Args:
-        conn: Open DB connection.
-        query: Keyword query (passed to :func:`fts_search`).
-        embedding: Query vector (passed to :func:`vector_search`).
-        top_k: Number of final results to return.
-        rrf_k: RRF smoothing constant (default 60 per literature).
-
-    Returns:
-        Deduplicated, re-ranked list of :class:`~backend.db.models.Node`.
-    """
-    fts_results = fts_search(conn, query, top_k=top_k * 2)
-    vec_results = vector_search(conn, embedding, top_k=top_k * 2)
+    """Merge FTS and vector results using Reciprocal Rank Fusion (RRF)."""
+    
+    # Pass scope_ids down
+    fts_results = fts_search(conn, query, top_k=top_k * 2, scope_ids=scope_ids)
+    vec_results = vector_search(conn, embedding, top_k=top_k * 2, scope_ids=scope_ids)
 
     scores: dict[str, float] = {}
     id_to_node: dict[str, Node] = {}

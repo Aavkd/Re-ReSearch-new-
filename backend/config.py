@@ -103,6 +103,13 @@ class Settings:
         default_factory=lambda: int(os.environ.get("AGENT_MAX_CONCURRENT_SCRAPES", "3"))
     )
 
+    # ------------------------------------------------------------------
+    # CLI Persistence
+    # ------------------------------------------------------------------
+    cli_config_dir: Path = field(
+        default_factory=lambda: Path.home() / ".research_cli"
+    )
+
     def ensure_workspace(self) -> None:
         """Create the workspace directory if it does not exist."""
         self.workspace_dir.mkdir(parents=True, exist_ok=True)
