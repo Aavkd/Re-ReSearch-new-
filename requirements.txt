@@ -1,0 +1,46 @@
+# Web framework & server
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# CLI
+# click<8.2 required: click 8.2 changed make_metavar() signature, breaking typer 0.15.x
+click>=8.1.0,<8.2.0
+typer[all]==0.15.1
+
+# DB / ORM helpers
+sqlalchemy==2.0.37
+sqlite-vec==0.1.6
+
+# LLM / Agent stack
+# Minimum langchain-core 0.3.75 satisfies langgraph-prebuilt>=0.3.67 and langchain-google-genai>=0.3.75
+langgraph==0.2.73
+langchain-core>=0.3.75,<0.4.0
+langchain-community>=0.3.18,<0.4.0
+langchain-openai>=0.3.3,<0.4.0
+langchain-ollama>=0.2.3,<0.3.0
+
+# HTTP client
+httpx==0.28.1
+
+# Web scraping / content extraction
+trafilatura==2.0.0
+playwright==1.49.1
+beautifulsoup4==4.13.3
+
+# PDF parsing (Phase 3)
+pypdf==5.1.0
+
+# Web search (Phase 4)
+duckduckgo-search==7.2.1
+
+# Testing
+pytest==8.3.4
+pytest-asyncio==0.25.2
+respx==0.21.1
+
+# Dev tooling
+black==24.10.0
+mypy==1.14.1
+
+# Config
+python-dotenv==1.0.1
