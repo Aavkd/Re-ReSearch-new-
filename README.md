@@ -41,8 +41,8 @@ Copy `.env.example` (if provided) to `.env` and set:
 | `RESEARCH_WORKSPACE` | `~/.research_data` | Directory for the SQLite DB |
 | `EMBEDDING_PROVIDER` | `ollama` | `ollama` or `openai` |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
-| `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
-| `OLLAMA_CHAT_MODEL` | `llama3.2` | Chat/reasoning model |
+| `OLLAMA_EMBED_MODEL` | `embeddinggemma:latest` | Embedding model |
+| `OLLAMA_CHAT_MODEL` | `ministral-3:8b` | Chat/reasoning model |
 | `OPENAI_API_KEY` | _(unset)_ | Required if using OpenAI |
 | `LLM_PROVIDER` | `ollama` | `ollama` or `openai` |
 

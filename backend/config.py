@@ -84,6 +84,25 @@ class Settings:
     )
 
     # ------------------------------------------------------------------
+    # Search providers
+    # ------------------------------------------------------------------
+    searxng_base_url: str = field(
+        default_factory=lambda: os.environ.get("SEARXNG_BASE_URL", "https://searx.be")
+    )
+    brave_api_key: str = field(
+        default_factory=lambda: os.environ.get("BRAVE_API_KEY", "")
+    )
+    search_provider_timeout: float = field(
+        default_factory=lambda: float(os.environ.get("SEARCH_PROVIDER_TIMEOUT", "10.0"))
+    )
+    search_retry_max: int = field(
+        default_factory=lambda: int(os.environ.get("SEARCH_RETRY_MAX", "3"))
+    )
+    search_retry_base_delay: float = field(
+        default_factory=lambda: float(os.environ.get("SEARCH_RETRY_BASE_DELAY", "2.0"))
+    )
+
+    # ------------------------------------------------------------------
     # RAG chunking
     # ------------------------------------------------------------------
     chunk_size: int = field(

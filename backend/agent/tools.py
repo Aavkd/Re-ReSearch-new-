@@ -4,13 +4,17 @@ Each function has a simple, focused signature so that node closures can call
 them directly.  The ``scrape_and_ingest`` and ``rag_retrieve`` helpers require
 an open DB connection which is captured by the node factory closures in
 ``backend.agent.nodes``.
+
+Web search is delegated to the ``SearchProviderChain`` defined in
+``backend.agent.search_providers``, which tries SearXNG → DuckDuckGo →
+Brave Search in order and returns the first successful result set.
 """
 
 from __future__ import annotations
 
 import sqlite3
 
-from duckduckgo_search import DDGS
+from backend.agent.search_providers import SearchProviderChain, build_default_chain
 
 from backend.db.search import fts_search, hybrid_search
 from backend.rag.embedder import embed_text
@@ -21,21 +25,32 @@ from backend.rag.ingestor import ingest_url
 # Web search
 # ---------------------------------------------------------------------------
 
+# Module-level singleton — built once per process so providers are reused.
+_search_chain: SearchProviderChain | None = None
+
+
+def _get_search_chain() -> SearchProviderChain:
+    global _search_chain
+    if _search_chain is None:
+        _search_chain = build_default_chain()
+    return _search_chain
+
+
 def web_search(query: str, max_results: int = 5) -> list[str]:
-    """Search DuckDuckGo and return a list of result URLs.
+    """Search the web and return a list of result URLs.
+
+    Delegates to the multi-provider ``SearchProviderChain`` (SearXNG →
+    DuckDuckGo with backoff → Brave Search).  The first provider that returns
+    results wins; if all fail an empty list is returned.
 
     Args:
         query: Search query string.
-        max_results: Maximum number of URLs to return (DuckDuckGo may return
-            fewer if insufficient results exist).
+        max_results: Maximum number of URLs to return.
 
     Returns:
-        A list of URL strings (possibly empty if the search fails).
+        A list of URL strings (possibly empty if all providers fail).
     """
-    with DDGS() as ddgs:
-        results = ddgs.text(query, max_results=max_results)
-
-    return [r["href"] for r in results if "href" in r]
+    return _get_search_chain().search(query, max_results=max_results)
 
 
 # ---------------------------------------------------------------------------

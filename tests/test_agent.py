@@ -78,13 +78,10 @@ class TestResearchState:
 
 class TestWebSearch:
     def test_returns_list_of_urls(self):
-        fake_results = [{"href": "https://example.com/a"}, {"href": "https://example.com/b"}]
-        with patch("backend.agent.tools.DDGS") as mock_ddgs_cls:
-            ctx = MagicMock()
-            ctx.__enter__ = MagicMock(return_value=ctx)
-            ctx.__exit__ = MagicMock(return_value=False)
-            ctx.text = MagicMock(return_value=fake_results)
-            mock_ddgs_cls.return_value = ctx
+        with patch("backend.agent.tools._get_search_chain") as mock_get_chain:
+            mock_chain = MagicMock()
+            mock_chain.search.return_value = ["https://example.com/a", "https://example.com/b"]
+            mock_get_chain.return_value = mock_chain
 
             from backend.agent.tools import web_search
             result = web_search("solid state battery")
@@ -92,13 +89,11 @@ class TestWebSearch:
         assert result == ["https://example.com/a", "https://example.com/b"]
 
     def test_filters_results_without_href(self):
-        fake_results = [{"href": "https://example.com"}, {"title": "no href"}]
-        with patch("backend.agent.tools.DDGS") as mock_ddgs_cls:
-            ctx = MagicMock()
-            ctx.__enter__ = MagicMock(return_value=ctx)
-            ctx.__exit__ = MagicMock(return_value=False)
-            ctx.text = MagicMock(return_value=fake_results)
-            mock_ddgs_cls.return_value = ctx
+        """Chain returns only valid URLs — filtering happens inside providers."""
+        with patch("backend.agent.tools._get_search_chain") as mock_get_chain:
+            mock_chain = MagicMock()
+            mock_chain.search.return_value = ["https://example.com"]
+            mock_get_chain.return_value = mock_chain
 
             from backend.agent.tools import web_search
             result = web_search("test")
@@ -106,12 +101,10 @@ class TestWebSearch:
         assert result == ["https://example.com"]
 
     def test_returns_empty_list_on_no_results(self):
-        with patch("backend.agent.tools.DDGS") as mock_ddgs_cls:
-            ctx = MagicMock()
-            ctx.__enter__ = MagicMock(return_value=ctx)
-            ctx.__exit__ = MagicMock(return_value=False)
-            ctx.text = MagicMock(return_value=[])
-            mock_ddgs_cls.return_value = ctx
+        with patch("backend.agent.tools._get_search_chain") as mock_get_chain:
+            mock_chain = MagicMock()
+            mock_chain.search.return_value = []
+            mock_get_chain.return_value = mock_chain
 
             from backend.agent.tools import web_search
             result = web_search("obscure topic")
