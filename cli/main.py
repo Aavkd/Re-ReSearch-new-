@@ -116,14 +116,27 @@ def db_search(
 
 
 # ---------------------------------------------------------------------------
-# Phase 2 — Scrape commands (stubs, implemented in Phase 2)
+# Phase 2 — Scrape commands
 # ---------------------------------------------------------------------------
 @app.command("scrape")
 def scrape(
     url: str = typer.Option(..., help="URL to scrape."),
 ) -> None:
-    """Scrape a URL and print extracted clean text."""
-    typer.echo(f"[scrape] Not yet implemented — coming in Phase 2. url={url!r}")
+    """Scrape a URL and print extracted clean text to stdout."""
+    from backend.scraper import extract_content, fetch_url
+
+    typer.echo(f"[scrape] Fetching {url!r} …")
+    raw = fetch_url(url)
+    typer.echo(f"[scrape] HTTP {raw.status_code} — extracting content …")
+
+    clean = extract_content(raw)
+    word_count = len(clean.text.split())
+
+    typer.echo(f"[scrape] Title  : {clean.title or '(none)'}")
+    typer.echo(f"[scrape] Words  : {word_count}")
+    typer.echo(f"[scrape] Links  : {len(clean.links)}")
+    typer.echo("")
+    typer.echo(clean.text)
 
 
 # ---------------------------------------------------------------------------

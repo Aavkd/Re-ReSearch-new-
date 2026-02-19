@@ -162,7 +162,7 @@ python cli/main.py db search --query "test" --mode fuzzy
 
 ---
 
-### Phase 2 — Web Scraper & Content Extraction Pipeline
+### Phase 2 — Web Scraper & Content Extraction Pipeline ✅ COMPLETE
 
 **Goal:** Given a URL, reliably extract clean, readable text suitable for feeding to an LLM.
 
@@ -193,6 +193,15 @@ python cli/main.py scrape --url "https://en.wikipedia.org/wiki/Solid-state_batte
 python cli/main.py scrape --url "https://arxiv.org/abs/2106.09685"
 # Expected: clean text printed to stdout + word-count summary
 ```
+
+> ✅ All 24 unit tests pass (Python 3.13.1, pytest 61/61 full suite). CLI `scrape` command wired and functional.
+
+**Notes from execution:**
+- `respx==0.21.1` incompatible with `httpx==0.28` / `httpcore>=0.18` — httpcore now stores URL parts as `bytes` but respx 0.21 expected `str`, causing all route matches to silently fail. Upgraded to `respx>=0.22.0` in `requirements.txt`.
+- `respx.mock` must be used as a bare context manager (`with respx.mock:`) with module-level `respx.get()` route registration — using `respx.mock()` (with parentheses) returns a new router instance that is not registered with the httpcore mock transport.
+- `_is_spa()` heuristic updated to strip `<script>` and `<style>` block content before measuring visible text ratio — previously the raw script source text was counted as "visible", causing the heuristic to miss obvious SPA pages.
+- Playwright fallback is lazy-imported and not exercised by the test suite (requires a browser install); it is covered by patching `_fetch_with_playwright` directly.
+- `trafilatura` → BeautifulSoup fallback path tested by patching `trafilatura.extract` to return `None`.
 
 ---
 
