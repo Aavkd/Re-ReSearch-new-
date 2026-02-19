@@ -97,7 +97,7 @@ python cli/main.py --help
 
 ---
 
-### Phase 1 — Database Layer
+### Phase 1 — Database Layer ✅ COMPLETE
 
 **Goal:** Implement the Universal Node / Edge data model with all three search mechanisms (relational, FTS5, vector).
 
@@ -152,6 +152,13 @@ python cli/main.py db create-node --title "Test Node" --type Artifact
 python cli/main.py db list-nodes
 python cli/main.py db search --query "test" --mode fuzzy
 ```
+
+> ✅ All 35 unit tests pass (Python 3.13.1, pytest 38/38 full suite). All four CLI smoke tests pass against the real on-disk DB at `~/.research_data/library.db`.
+
+**Notes from execution:**
+- `sqlite3.enable_load_extension(True)` must be called before `sqlite_vec.load(conn)` — the default Python sqlite3 build disallows extension loading without this opt-in. It is immediately disabled again after loading.
+- `conn.executescript()` used instead of splitting on `;` — the naive split breaks multi-statement trigger bodies (`BEGIN … END;`) producing `incomplete input` errors.
+- `semantic` and `hybrid` CLI search modes defer gracefully with an informative message (embedder not available until Phase 3).
 
 ---
 

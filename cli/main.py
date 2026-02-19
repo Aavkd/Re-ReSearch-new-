@@ -12,7 +12,25 @@ Each sub-command group maps to a backend phase:
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+# Ensure the project root (Search/) is on sys.path so that
+# `from backend.xxx import ...` works when the CLI is invoked as
+# `python cli/main.py` from any working directory.
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+import json
+from typing import Optional
+
 import typer
+
+from backend.config import settings
+from backend.db import get_connection, init_db
+from backend.db.nodes import create_node, list_nodes
+from backend.db.search import fts_search, hybrid_search, vector_search
 
 app = typer.Typer(
     name="research",
@@ -30,7 +48,10 @@ app.add_typer(db_app, name="db")
 @db_app.command("init")
 def db_init() -> None:
     """Initialise the SQLite database (create tables if they do not exist)."""
-    typer.echo("[db init] Not yet implemented — coming in Phase 1.")
+    conn = get_connection()
+    init_db(conn)
+    conn.close()
+    typer.echo(f"[db init] Database ready at {settings.db_path}")
 
 
 @db_app.command("create-node")
@@ -39,15 +60,27 @@ def db_create_node(
     type: str = typer.Option(..., "--type", help="Node type (e.g. Artifact, Source)."),
 ) -> None:
     """Create a new node in the database."""
-    typer.echo(f"[db create-node] Not yet implemented — coming in Phase 1. title={title!r} type={type!r}")
+    conn = get_connection()
+    init_db(conn)
+    node = create_node(conn, title=title, node_type=type)
+    conn.close()
+    typer.echo(f"[db create-node] Created node: {node.id}  title={node.title!r}  type={node.node_type!r}")
 
 
 @db_app.command("list-nodes")
 def db_list_nodes(
-    node_type: str | None = typer.Option(None, "--type", help="Filter by node type."),
+    node_type: Optional[str] = typer.Option(None, "--type", help="Filter by node type."),
 ) -> None:
     """List all nodes (optionally filtered by type)."""
-    typer.echo(f"[db list-nodes] Not yet implemented — coming in Phase 1. type={node_type!r}")
+    conn = get_connection()
+    init_db(conn)
+    nodes = list_nodes(conn, node_type=node_type)
+    conn.close()
+    if not nodes:
+        typer.echo("[db list-nodes] No nodes found.")
+        return
+    for n in nodes:
+        typer.echo(f"  {n.id}  [{n.node_type}]  {n.title!r}")
 
 
 @db_app.command("search")
@@ -56,7 +89,30 @@ def db_search(
     mode: str = typer.Option("fuzzy", help="Search mode: fuzzy | semantic | hybrid."),
 ) -> None:
     """Search nodes by keyword, vector similarity, or both."""
-    typer.echo(f"[db search] Not yet implemented — coming in Phase 1. query={query!r} mode={mode!r}")
+    conn = get_connection()
+    init_db(conn)
+
+    if mode == "fuzzy":
+        results = fts_search(conn, query)
+    elif mode == "semantic":
+        typer.echo("[db search] Semantic search requires an active embedding model (Phase 3).")
+        conn.close()
+        raise typer.Exit(1)
+    elif mode == "hybrid":
+        typer.echo("[db search] Hybrid search requires an active embedding model (Phase 3).")
+        conn.close()
+        raise typer.Exit(1)
+    else:
+        typer.echo(f"[db search] Unknown mode {mode!r}. Use: fuzzy | semantic | hybrid")
+        conn.close()
+        raise typer.Exit(1)
+
+    conn.close()
+    if not results:
+        typer.echo(f"[db search] No results for {query!r}.")
+        return
+    for n in results:
+        typer.echo(f"  {n.id}  [{n.node_type}]  {n.title!r}")
 
 
 # ---------------------------------------------------------------------------
