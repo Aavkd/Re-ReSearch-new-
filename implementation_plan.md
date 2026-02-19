@@ -205,7 +205,7 @@ python cli/main.py scrape --url "https://arxiv.org/abs/2106.09685"
 
 ---
 
-### Phase 3 — RAG Ingestion Pipeline
+### Phase 3 — RAG Ingestion Pipeline ✅ COMPLETE
 
 **Goal:** Convert a `CleanPage` (or PDF / plain text) into searchable chunks stored in the DB.
 
@@ -250,6 +250,18 @@ python cli/main.py ingest url --url "https://en.wikipedia.org/wiki/Solid-state_b
 python cli/main.py db search --query "electrolyte" --mode semantic
 # Expected: ranked list of chunks referencing electrolyte content
 ```
+
+> ✅ All 27 unit tests pass (Python 3.13.1, pytest 87/87 full suite). CLI `ingest url` and `ingest pdf` commands wired and functional.
+
+**Notes from execution:**
+- `chunker.py` uses recursive splitting on `\n\n` → `\n` → `" "`, then a greedy merge loop with overlap seeding. Hard character-boundary cuts handle pathological cases (no whitespace in a long run).
+- Overlap implementation trims to the nearest word boundary after the cut point so chunks never start mid-word.
+- `embedder.py` lazy-imports `os` only in the OpenAI branch; the Ollama branch has no stdlib-level overhead.
+- `ingestor.py` and `pdf_ingestor.py` share the same chunk → embed → store loop. The `nodes_ai` trigger pre-inserts a blank FTS row on every `INSERT INTO nodes`; the ingestor then issues a targeted `UPDATE nodes_fts SET content_body = ?` rather than a full re-insert, avoiding FTS duplicate rows.
+- Vector upsert uses `INSERT OR REPLACE INTO nodes_vec` so re-ingesting a URL replaces its embeddings cleanly.
+- `_extract_pdf_text` is isolated to `pdf_ingestor.py` and patched directly in tests — `pypdf` is never imported in the test process.
+- Both `ingest url` and `ingest pdf` CLI commands call `get_connection()` + `init_db()` before delegating and always close the connection in a `finally` block.
+- `db search --mode semantic` and `--mode hybrid` are now fully wired; they call `embed_text(query)` then `vector_search` / `hybrid_search`.
 
 ---
 

@@ -95,13 +95,15 @@ def db_search(
     if mode == "fuzzy":
         results = fts_search(conn, query)
     elif mode == "semantic":
-        typer.echo("[db search] Semantic search requires an active embedding model (Phase 3).")
-        conn.close()
-        raise typer.Exit(1)
+        from backend.rag.embedder import embed_text
+        typer.echo("[db search] Embedding query …")
+        embedding = embed_text(query)
+        results = vector_search(conn, embedding)
     elif mode == "hybrid":
-        typer.echo("[db search] Hybrid search requires an active embedding model (Phase 3).")
-        conn.close()
-        raise typer.Exit(1)
+        from backend.rag.embedder import embed_text
+        typer.echo("[db search] Embedding query …")
+        embedding = embed_text(query)
+        results = hybrid_search(conn, query, embedding)
     else:
         typer.echo(f"[db search] Unknown mode {mode!r}. Use: fuzzy | semantic | hybrid")
         conn.close()
@@ -147,19 +149,37 @@ app.add_typer(ingest_app, name="ingest")
 
 
 @ingest_app.command("url")
-def ingest_url(
+def ingest_url_cmd(
     url: str = typer.Option(..., help="URL to scrape and ingest."),
 ) -> None:
     """Scrape a URL and ingest it into the knowledge base."""
-    typer.echo(f"[ingest url] Not yet implemented — coming in Phase 3. url={url!r}")
+    from backend.rag.ingestor import ingest_url
+
+    conn = get_connection()
+    init_db(conn)
+    typer.echo(f"[ingest url] Ingesting {url!r} …")
+    try:
+        node = ingest_url(conn, url)
+    finally:
+        conn.close()
+    typer.echo(f"[ingest url] Source node created: {node.id}  title={node.title!r}")
 
 
 @ingest_app.command("pdf")
-def ingest_pdf(
+def ingest_pdf_cmd(
     path: str = typer.Option(..., help="Local path to a PDF file."),
 ) -> None:
     """Ingest a PDF file into the knowledge base."""
-    typer.echo(f"[ingest pdf] Not yet implemented — coming in Phase 3. path={path!r}")
+    from backend.rag.pdf_ingestor import ingest_pdf
+
+    conn = get_connection()
+    init_db(conn)
+    typer.echo(f"[ingest pdf] Ingesting {path!r} …")
+    try:
+        node = ingest_pdf(conn, path)
+    finally:
+        conn.close()
+    typer.echo(f"[ingest pdf] Source node created: {node.id}  title={node.title!r}")
 
 
 # ---------------------------------------------------------------------------

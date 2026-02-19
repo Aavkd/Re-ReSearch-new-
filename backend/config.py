@@ -49,7 +49,7 @@ class Settings:
         default_factory=lambda: os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
     )
     ollama_embed_model: str = field(
-        default_factory=lambda: os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text")
+        default_factory=lambda: os.environ.get("OLLAMA_EMBED_MODEL", "embeddinggemma:latest")
     )
     openai_embed_model: str = field(
         default_factory=lambda: os.environ.get(
@@ -67,7 +67,7 @@ class Settings:
         default_factory=lambda: os.environ.get("LLM_PROVIDER", "ollama")
     )
     ollama_chat_model: str = field(
-        default_factory=lambda: os.environ.get("OLLAMA_CHAT_MODEL", "llama3.2")
+        default_factory=lambda: os.environ.get("OLLAMA_CHAT_MODEL", "ministral-3:8b")
     )
     openai_chat_model: str = field(
         default_factory=lambda: os.environ.get("OPENAI_CHAT_MODEL", "gpt-4o-mini")
