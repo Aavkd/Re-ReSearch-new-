@@ -265,7 +265,7 @@ python cli/main.py db search --query "electrolyte" --mode semantic
 
 ---
 
-### Phase 4 — LangGraph Researcher Agent
+### Phase 4 — LangGraph Researcher Agent ✅ COMPLETE
 
 **Goal:** An autonomous agent that, given a research goal, plans → searches → scrapes → synthesises → returns a structured report.
 
@@ -329,6 +329,18 @@ python cli/main.py research --goal "Summarise the current state of solid-state b
 # [DONE] Report saved as Artifact node: <uuid>
 # Report content printed to terminal.
 ```
+
+> ✅ All 28 unit tests pass (Python 3.13.1, pytest 114/114 full suite). CLI `research` command wired and functional.
+
+**Notes from execution:**
+- All five node functions are implemented as *factory closures* (`make_planner`, `make_searcher`, etc.) that capture an open `sqlite3.Connection`; the connection never appears in the serialisable `ResearchState` bag.
+- `backend/agent/tools.py` uses **module-level imports** for `DDGS`, `ingest_url`, `embed_text`, `fts_search`, and `hybrid_search` so that `unittest.mock.patch` can intercept them by their canonical dotted path without needing lazy-import tricks.
+- `rag_retrieve` degrades gracefully: it attempts hybrid search (embed + FTS), and falls back to FTS-only if `embed_text` raises any exception (e.g. Ollama not running).
+- `make_evaluator` treats both "has findings" and "iteration limit reached" as terminal conditions, avoiding infinite loops even when all scrapes fail.
+- `make_scraper` respects `settings.agent_max_concurrent_scrapes` by slicing the pending URL list before the loop; failed scrapes are caught, logged, and skipped without aborting the pipeline.
+- `runner.py` uses `graph.stream()` so node `print()` calls reach stdout in real time; after the stream exhausts, `graph.get_state()` retrieves the final accumulated state.
+- The finished report is persisted as an `Artifact` node via `create_node` with `goal`, `iterations`, and `sources_count` in metadata.
+- `backend/agent/__init__.py` re-exports `run_research` so callers can do `from backend.agent import run_research`.
 
 ---
 

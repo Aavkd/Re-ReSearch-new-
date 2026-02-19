@@ -183,7 +183,7 @@ def ingest_pdf_cmd(
 
 
 # ---------------------------------------------------------------------------
-# Phase 4 — Research agent command (stub, implemented in Phase 4)
+# Phase 4 — Research agent command
 # ---------------------------------------------------------------------------
 @app.command("research")
 def research(
@@ -191,7 +191,17 @@ def research(
     depth: str = typer.Option("standard", help="Research depth: quick | standard | deep."),
 ) -> None:
     """Run the autonomous researcher agent against a goal."""
-    typer.echo(f"[research] Not yet implemented — coming in Phase 4. goal={goal!r} depth={depth!r}")
+    from backend.agent.runner import run_research
+
+    typer.echo(f"[research] Starting research: {goal!r}  (depth={depth!r})")
+    final = run_research(goal)
+    report = final.get("report", "")
+    if report:
+        typer.echo("\n" + "=" * 72)
+        typer.echo(report)
+        typer.echo("=" * 72)
+    else:
+        typer.echo("[research] Agent completed but produced no report.")
 
 
 # ---------------------------------------------------------------------------
