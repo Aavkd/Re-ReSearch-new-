@@ -1,4 +1,54 @@
 
-uvicorn.log
-
+# ── Environment & secrets ────────────────────────────────────────────────────
 .env
+.env.*
+!.env.example
+# Frontend dev env is safe to commit (no secrets)
+!frontend/.env.development
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.cover
+coverage.xml
+
+# ── Research workspace data ──────────────────────────────────────────────────
+# Default workspace dir is ~/.research_data — not in repo, but guard local overrides
+research_data/
+*.db
+*.db-shm
+*.db-wal
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+uvicorn.log
+*.log
+
+# ── Node / npm (frontend) ────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.DS_Store
+
+# ── OS & editor ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+.idea/

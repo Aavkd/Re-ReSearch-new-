@@ -23,6 +23,25 @@ Build a browser-based React frontend for the Re:Search app inside a new `fronten
 
 ---
 
+## Implementation Notes (Phases F0 & F1 — completed Feb 2026)
+
+### F0 — Deviations from plan
+
+| Item | Plan | Actual |
+|---|---|---|
+| TS config files | `tsconfig.json` (browser) + `tsconfig.node.json` (Vite) | Added `tsconfig.app.json` for the browser target; `tsconfig.json` is a project-references root. This matches the Vite 5 scaffold default and is required for `tsc -b`. |
+| `vite.config.ts` import | `import { defineConfig } from "vite"` | Uses `import { defineConfig } from "vitest/config"` so the `test:` block is correctly typed by Vitest. |
+| `npm run test` | `vitest run` | `vitest run --passWithNoTests` — vitest exits 1 with no test files by default; this flag satisfies the "0 tests, 0 failures" validation requirement. |
+
+### F1 — Deviations from plan
+
+| Item | Plan | Actual |
+|---|---|---|
+| `ProjectSummary.recent_artifacts` | `ArtifactNode[]` | `string[]` — the backend (`db/projects.py::get_project_summary`) appends `n.title` strings, not full node objects. The TypeScript type matches the actual API. Add a `// TODO` comment tracks the discrepancy. Update to `ArtifactNode[]` if the backend changes. |
+| SSE transport note | "Native `EventSource` API" in tech stack | The `/research` endpoint is a POST, so `EventSource` (GET-only) cannot be used. `api/agent.ts` uses `fetch` + `AbortController` + `ReadableStream` as specified in the F1 implementation details. |
+
+---
+
 ## Directory Structure (target state)
 
 ```

@@ -1,6 +1,6 @@
-# Re:Search — Python Backend
+# Re:Search
 
-AI researcher agent with a Universal Node/Edge knowledge graph, RAG ingestion pipeline, and autonomous LangGraph agent.
+AI researcher agent with a Universal Node/Edge knowledge graph, RAG ingestion pipeline, autonomous LangGraph agent, and a React browser frontend.
 
 ## Quick Start
 
@@ -27,9 +27,30 @@ Search/
 │   └── api/                 # Phase 5: FastAPI HTTP layer
 ├── cli/
 │   └── main.py              # Typer CLI entry-point
+├── frontend/                # React + Vite browser frontend (F0–F8)
+│   ├── src/
+│   │   ├── api/             # axios API client (F1)
+│   │   ├── types/           # Shared TypeScript types (F1)
+│   │   ├── stores/          # Zustand state (F2)
+│   │   ├── hooks/           # TanStack Query hooks (F2)
+│   │   ├── components/      # UI components (F3–F8)
+│   │   └── screens/         # Top-level screen components (F5–F8)
+│   ├── package.json
+│   └── vite.config.ts
 ├── tests/                   # pytest test suite
 ├── requirements.txt
 └── pyproject.toml
+```
+
+## Frontend Quick Start
+
+```bash
+# Requires Node.js ≥ 18 and the backend running on http://localhost:8000
+cd frontend
+npm install
+npm run dev        # http://localhost:5173
+npm run build      # production bundle → frontend/dist/
+npm run test       # vitest unit tests
 ```
 
 ## Configuration
@@ -71,6 +92,20 @@ pytest tests/ -v --tb=short
 | 12 | ✅ Complete | `agent` command group |
 | 13 | ✅ Complete | CLI restructure & cleanup |
 | 14 | ✅ Complete | API hardening — CORS + `/projects` REST endpoints |
+
+### Frontend Phases
+
+| Phase | Status | Description |
+|---|---|---|
+| F0 | ✅ Complete | Vite + React + TypeScript scaffold, Tailwind, Vitest |
+| F1 | ✅ Complete | TypeScript types, axios API client, SSE agent helper, unit tests |
+| F2 | 🔲 Planned | Zustand project store, TanStack Query hooks |
+| F3 | 🔲 Planned | App shell, sidebar, routing skeleton |
+| F4 | 🔲 Planned | `ProjectSwitcher` component |
+| F5 | 🔲 Planned | `LibraryScreen` (ingest + search) |
+| F6 | 🔲 Planned | `MapScreen` (React Flow graph canvas) |
+| F7 | 🔲 Planned | `DraftsScreen` (CodeMirror Markdown editor) |
+| F8 | 🔲 Planned | `AgentScreen` (SSE progress + report) |
 
 ## CLI Commands
 
