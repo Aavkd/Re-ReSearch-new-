@@ -20,6 +20,8 @@ class ResearchState(TypedDict):
         status: Current lifecycle phase.  One of:
             ``"planning"``  | ``"searching"``  | ``"scraping"``
             ``"synthesising"`` | ``"evaluating"`` | ``"done"``
+        artifact_id: UUID of the ``Artifact`` node created for the final
+            report.  Empty string until the report has been persisted.
     """
 
     goal: str
@@ -30,3 +32,4 @@ class ResearchState(TypedDict):
     report: str
     iteration: int
     status: str
+    artifact_id: str

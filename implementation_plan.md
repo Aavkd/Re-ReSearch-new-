@@ -19,7 +19,7 @@ Transform the current flat CLI ([cli/main.py](file:///c:/Users/speee/.openclaw/w
 | `library` command group | ✅ Complete | `cli/commands/library.py` |
 | `map` command group | ✅ Complete | `cli/commands/map.py`, `tests/test_cli_map.py` |
 | `draft` command group | ✅ Complete | `cli/commands/draft.py` |
-| `agent` command group | ❌ Not started | `cli/commands/agent.py` does not exist |
+| `agent` command group | ✅ Complete | `cli/commands/agent.py` |
 | CLI wiring | ❌ Not started | `cli/main.py` — new command groups not mounted |
 
 ### What We're Building
@@ -351,13 +351,15 @@ python cli/main.py draft show <node_id>
 
 ---
 
-### Phase 12 — `agent` Command Group ❌ NOT STARTED
+### Phase 12 — `agent` Command Group ✅ COMPLETE
 
 **Goal:** Wrap the existing `run_research` function in a project-aware command that auto-links outputs.
 
 **Dependencies:** Phase 4 (agent, already complete), Phase 7 (project linking).
 
-#### [NEW] `cli/commands/agent.py`
+**Status:** All commands implemented and tested. `agent hire` runs the research agent (mocked in tests), links the artifact and source nodes to the active project. `agent status` lists agent-produced reports with creation time, goal, and source counts. All 5 tests pass.
+
+#### [DONE] `cli/commands/agent.py`
 
 Typer sub-app `agent_app`:
 
@@ -366,26 +368,23 @@ Typer sub-app `agent_app`:
 | `agent hire --goal "<objective>"` | `--depth quick\|standard\|deep` | (1) Call `run_research(goal)`, (2) The report artifact is already created by `runner.py`, (3) Retrieve the artifact node, (4) `link_to_project(conn, project_id, artifact.id, "HAS_ARTIFACT")`, (5) Link all scraped URLs' source nodes to the project |
 | `agent status` | | List all `Artifact` nodes in the project with `metadata.goal` set (i.e., agent-produced reports). Show creation time, goal, sources count |
 
-#### [MODIFY] `backend/agent/runner.py`
+#### [DONE] `backend/agent/runner.py`
 
-Small enhancement: `run_research` should **return the artifact node ID** alongside the `ResearchState`, so the CLI can link it to the project. Current implementation creates the artifact but doesn't surface its ID to the caller.
+Small enhancement: `run_research` now **returns the artifact node ID** alongside the `ResearchState`.
 
-Options:
-1. Add `artifact_id` field to `ResearchState`.
-2. Return a tuple `(ResearchState, artifact_id: str | None)`.
+#### [DONE] `backend/agent/state.py`
 
-**Decision:** Add `artifact_id: str` to `ResearchState` TypedDict. Populate it after the `create_node` call in `runner.py`.
+`artifact_id: str` field added (defaults to `""` in `initial_state`).
 
-#### [MODIFY] `backend/agent/state.py`
-
-Add `artifact_id: str` field (default `""`).
-
-#### [NEW] `tests/test_cli_agent.py`
+#### [DONE] `tests/test_cli_agent.py`
 
 | Test | Assertion |
 |---|---|
-| `test_agent_hire` | Research runs (mocked), report linked to active project |
-| `test_agent_status` | Lists agent-produced artifacts |
+| `test_agent_hire` | Research runs (mocked), report and sources linked to active project |
+| `test_agent_hire_no_report` | Handles gracefully when agent produces no report |
+| `test_agent_status` | Lists agent-produced artifacts; excludes manual drafts |
+| `test_agent_status_no_reports` | Shows clear message when no reports exist |
+| `test_agent_hire_requires_context` | Aborts with message when no project is active |
 
 **Validation:**
 ```bash
@@ -496,7 +495,7 @@ graph LR
 | `cli/commands/library.py` | 9 | ✅ Done | `library` command group |
 | `cli/commands/map.py` | 10 | ✅ Done | `map` command group |
 | `cli/commands/draft.py` | 11 | ✅ Done | `draft` command group — all commands including `attach` |
-| `cli/commands/agent.py` | 12 | ❌ TODO | `agent` command group |
+| `cli/commands/agent.py` | 12 | ✅ Done | `agent` command group |
 | `cli/editor.py` | 11 | ✅ Done | External editor integration |
 | `cli/rendering.py` | 10 | ✅ Done | ASCII tree renderer |
 | `backend/db/projects.py` | 7 | ✅ Done | Graph-scoping helpers |
@@ -507,7 +506,7 @@ graph LR
 | `tests/test_cli_library.py` | 9 | ✅ Done | Library command tests |
 | `tests/test_cli_map.py` | 10 | ✅ Done | Map command tests |
 | `tests/test_cli_draft.py` | 11 | ✅ Done | Draft command tests — 5/5 passing |
-| `tests/test_cli_agent.py` | 12 | ❌ TODO | Agent command tests |
+| `tests/test_cli_agent.py` | 12 | ✅ Done | Agent command tests — 5/5 passing |
 
 ### Modified Files
 
@@ -515,8 +514,8 @@ graph LR
 |---|---|---|---|
 | `backend/config.py` | 6 | ✅ Done | `cli_config_dir` setting added |
 | `backend/db/search.py` | 9 | ✅ Done | `scope_ids` filter param added to all search functions |
-| `backend/agent/state.py` | 12 | ❌ TODO | Add `artifact_id` field |
-| `backend/agent/runner.py` | 12 | ❌ TODO | Surface `artifact_id` in return state |
+| `backend/agent/state.py` | 12 | ✅ Done | Added `artifact_id: str` field |
+| `backend/agent/runner.py` | 12 | ✅ Done | Returns `artifact_id` in final state |
 | `cli/main.py` | 13 | ❌ TODO | Replace old commands with new sub-apps |
 | `README.md` | 9/10 | ✅ Done | Updated CLI documentation with command groups |
 
@@ -526,7 +525,7 @@ graph LR
 
 ### Automated Tests
 
-The full suite currently has 166 collected tests; 162 pass. 4 pre-existing failures:
+The full suite currently has 171 collected tests; 167 pass. 4 pre-existing failures:
 - `TestFetchUrl` (4 tests in `test_scraper.py`) — `respx` mock setup issue pre-dating Phase 6; unrelated to CLI work.
 
 Run the full suite with:

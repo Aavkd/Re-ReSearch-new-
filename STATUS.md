@@ -122,22 +122,22 @@ from cli.commands.project import project_app
 from cli.commands.library import library_app
 from cli.commands.map import map_app
 from cli.commands.draft import draft_app
+from cli.commands.agent import agent_app
 
 app.add_typer(project_app, name="project")
 app.add_typer(library_app, name="library")
 app.add_typer(map_app, name="map")
 app.add_typer(draft_app, name="draft")
+app.add_typer(agent_app, name="agent")
 ```
 
 ### 📋 Missing commands (not yet implemented, planned in Phase 9–12)
 
-| Command | Status | Notes |
-|---|---|---|
-| `agent hire` / `agent status` | ❌ Not built | `cli/commands/agent.py` not created |
+All Phase 9–12 commands have been implemented. No missing commands remain.
 
 ### 🗂️ Missing test file
 
-`tests/test_cli_map.py` does not exist.
+All planned test files have been created. No missing test files.
 
 ### 🧹 Technical debt
 
@@ -206,9 +206,9 @@ python cli/main.py map show
 python cli/main.py draft new "Notes"
 ```
 
-### Step 3 — Build `cli/commands/agent.py` (Phase 12, 2–3 hrs)
+### Step 3 — Build `cli/commands/agent.py` (Phase 12) ✅ DONE
 
-Wrap the existing `run_research()` in a project-aware CLI command that auto-links the result artifact to the active project. Also requires adding `artifact_id` to `ResearchState` in `backend/agent/state.py` so the runner surfaces the created node ID.
+`cli/commands/agent.py` created. `artifact_id` added to `ResearchState`. `run_research` surfaces the artifact ID in its return value. 5/5 tests passing.
 
 ### Step 4 — Clean up code quality issues
 
@@ -233,5 +233,5 @@ Replace `docs/DOCS_BACKEND.md` and `docs/DOCS_AI_CORE.md` with accurate descript
 | 9 | `library` command group | ⚠️ Partial — `recall` missing |
 | 10 | `map` command group | ⚠️ Partial — `cluster` missing, no tests |
 | 11 | `draft` command group | ✅ Complete |
-| 12 | `agent` command group | ❌ Not started |
+| 12 | `agent` command group | ✅ Complete |
 | 13 | CLI restructure / wiring | ❌ Not started — blocks full usability |

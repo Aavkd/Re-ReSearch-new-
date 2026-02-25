@@ -69,6 +69,7 @@ def run_research(
             "report": "",
             "iteration": 0,
             "status": "planning",
+            "artifact_id": "",
         }
 
         # ------------------------------------------------------------------
@@ -93,6 +94,7 @@ def run_research(
         # Persist the report as an Artifact node
         # ------------------------------------------------------------------
         report_text = final.get("report", "")
+        artifact_id = ""
         if report_text:
             artifact = create_node(
                 conn,
@@ -104,11 +106,12 @@ def run_research(
                     "sources_count": len(final.get("urls_scraped", [])),
                 },
             )
+            artifact_id = artifact.id
             print(f"[DONE] Report saved as Artifact node: {artifact.id}")
         else:
             print("[DONE] Agent completed but produced no report.")
 
-        return final
+        return {**final, "artifact_id": artifact_id}  # type: ignore[return-value]
 
     finally:
         conn.close()
