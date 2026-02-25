@@ -99,8 +99,8 @@ pytest tests/ -v --tb=short
 |---|---|---|
 | F0 | ✅ Complete | Vite + React + TypeScript scaffold, Tailwind, Vitest |
 | F1 | ✅ Complete | TypeScript types, axios API client, SSE agent helper, unit tests |
-| F2 | 🔲 Planned | Zustand project store, TanStack Query hooks |
-| F3 | 🔲 Planned | App shell, sidebar, routing skeleton |
+| F2 | ✅ Complete | Zustand project store, TanStack Query hooks |
+| F3 | ✅ Complete | App shell, sidebar, routing skeleton |
 | F4 | 🔲 Planned | `ProjectSwitcher` component |
 | F5 | 🔲 Planned | `LibraryScreen` (ingest + search) |
 | F6 | 🔲 Planned | `MapScreen` (React Flow graph canvas) |

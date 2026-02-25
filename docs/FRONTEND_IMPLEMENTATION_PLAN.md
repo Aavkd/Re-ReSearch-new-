@@ -42,6 +42,26 @@ Build a browser-based React frontend for the Re:Search app inside a new `fronten
 
 ---
 
+## Implementation Notes (Phases F2 & F3 — completed Feb 2026)
+
+### F2 — Deviations from plan
+
+| Item | Plan | Actual |
+|---|---|---|
+| `useProjectSummary` signature | `id: string` | `id: string \| null` — callers get `activeProjectId` from Zustand which is `string \| null`; using `null` keeps the `enabled: !!id` guard consistent across all hooks. |
+| `useCreateNode` / `useDeleteNode` invalidation | `['nodes']` only | Also invalidates `['projectGraph', activeProjectId]` when a project is active — this keeps the map canvas fresh after node creation without a manual refresh. |
+| `App.tsx` providers | `<AppShell />` as single child | `ReactQueryDevtools` is rendered outside `BrowserRouter` (after `</BrowserRouter>`) and only when `import.meta.env.DEV` is true, so it never appears in production builds. |
+
+### F3 — Deviations from plan
+
+| Item | Plan | Actual |
+|---|---|---|
+| `AppShell` includes `<ProjectSwitcher />` | Rendered inside sidebar | A clearly-labelled placeholder `<div data-testid="project-switcher-slot">` is used instead; the real component is wired in Phase F4. |
+| Redirect at index route | Implicit behaviour | Explicit `<Navigate to="/library" replace />` at the index route ensures the redirect is visible and testable without actual navigation history manipulation. |
+| React Router v6 future flags | Not mentioned | Two `v7_*` future-flag console warnings appear in test output (informational only, not failures). These can be silenced by passing `future={{ v7_startTransition: true, v7_relativeSplatPath: true }}` to `<BrowserRouter>` when upgrading to React Router v7. |
+
+---
+
 ## Directory Structure (target state)
 
 ```
