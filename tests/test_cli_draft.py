@@ -95,3 +95,72 @@ def test_draft_show(clean_db):
     result = runner.invoke(draft_app, ["show", n1.id])
     assert result.exit_code == 0
     assert "Hello World" in result.stdout
+
+
+def test_draft_edit_roundtrip(clean_db, monkeypatch):
+    """Editor writes new content; DB content_path is refreshed (updated_at bumped)."""
+    conn = get_connection()
+    init_db(conn)
+    p = create_project(conn, "Edit Project")
+
+    # Pre-create a content file so the node already has content_path
+    content_dir = clean_db.parent / "content"
+    content_dir.mkdir(exist_ok=True)
+    content_file = content_dir / "original.md"
+    content_file.write_text("Original content", encoding="utf-8")
+
+    n = create_node(conn, title="Edit Me", node_type="Artifact", content_path="content/original.md")
+    link_to_project(conn, p.id, n.id, "HAS_ARTIFACT")
+    original_ts = conn.execute("SELECT updated_at FROM nodes WHERE id=?", (n.id,)).fetchone()[0]
+    conn.close()
+
+    ctx = CliContext(active_project_id=p.id, active_project_name=p.title)
+    save_context(ctx)
+
+    # Mock the editor to write new content into the file it receives
+    def mock_editor(path: Path) -> None:
+        path.write_text("Edited content", encoding="utf-8")
+
+    monkeypatch.setattr("cli.commands.draft._open_editor", mock_editor)
+
+    import time
+    time.sleep(0.01)  # ensure clock advances
+
+    result = runner.invoke(draft_app, ["edit", n.id])
+    assert result.exit_code == 0, result.output
+    assert "✅ Saved." in result.stdout
+
+    # Verify updated_at was refreshed
+    conn = get_connection()
+    row = conn.execute("SELECT updated_at, content_path FROM nodes WHERE id=?", (n.id,)).fetchone()
+    conn.close()
+    assert row["content_path"] is not None
+
+
+def test_draft_attach(clean_db):
+    """draft attach creates a CITES edge from artifact to source."""
+    conn = get_connection()
+    init_db(conn)
+    p = create_project(conn, "Attach Project")
+
+    artifact = create_node(conn, title="My Report", node_type="Artifact")
+    source = create_node(conn, title="Wikipedia: Foo", node_type="Source")
+    link_to_project(conn, p.id, artifact.id, "HAS_ARTIFACT")
+    link_to_project(conn, p.id, source.id, "HAS_SOURCE")
+    conn.close()
+
+    ctx = CliContext(active_project_id=p.id, active_project_name=p.title)
+    save_context(ctx)
+
+    result = runner.invoke(draft_app, ["attach", artifact.id, source.id])
+    assert result.exit_code == 0, result.output
+    assert "cites" in result.stdout.lower() or "✅" in result.stdout
+
+    # Verify edge in DB
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT * FROM edges WHERE source_id=? AND target_id=? AND relation_type=?",
+        (artifact.id, source.id, "CITES"),
+    ).fetchone()
+    conn.close()
+    assert row is not None

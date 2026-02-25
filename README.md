@@ -67,7 +67,7 @@ pytest tests/ -v --tb=short
 | 8 | ✅ Complete | `project` command group |
 | 9 | ✅ Complete | `library` command group (add, list, search, recall) |
 | 10 | ✅ Complete | `map` command group (show, connect, cluster) |
-| 11 | ⚠️ Partial | `draft` command group (`attach` missing, `edit` bug) |
+| 11 | ✅ Complete | `draft` command group (new, list, show, edit, attach) |
 | 12 | ❌ Not started | `agent` command group |
 | 13 | ❌ Not started | CLI restructure & cleanup |
 
@@ -113,6 +113,7 @@ python cli/main.py draft new "Chapter 1"
 python cli/main.py draft list
 python cli/main.py draft show <node_id>
 python cli/main.py draft edit <node_id>                   # opens $EDITOR
+python cli/main.py draft attach <artifact_id> <source_id>  # CITES edge
 ```
 
 ## API Server

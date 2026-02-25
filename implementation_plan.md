@@ -18,7 +18,7 @@ Transform the current flat CLI ([cli/main.py](file:///c:/Users/speee/.openclaw/w
 | `project` command group | ✅ Complete | `cli/commands/project.py` |
 | `library` command group | ✅ Complete | `cli/commands/library.py` |
 | `map` command group | ✅ Complete | `cli/commands/map.py`, `tests/test_cli_map.py` |
-| `draft` command group | ⚠️ Partial | `cli/commands/draft.py` — `attach` missing, `edit` has a bug |
+| `draft` command group | ✅ Complete | `cli/commands/draft.py` |
 | `agent` command group | ❌ Not started | `cli/commands/agent.py` does not exist |
 | CLI wiring | ❌ Not started | `cli/main.py` — new command groups not mounted |
 
@@ -289,16 +289,13 @@ python cli/main.py map connect <nodeA_id> <nodeB_id> --label "RELATED_TO"
 
 ---
 
-### Phase 11 — `draft` Command Group ⚠️ PARTIAL
+### Phase 11 — `draft` Command Group ✅ COMPLETE
 
 **Goal:** Create and edit artifact documents via the user's external editor.
 
 **Dependencies:** Phase 7 (project linking), Phase 1 (node CRUD).
 
-**Status:** `draft new`, `draft list`, and `draft show` are implemented. `draft attach` is not yet built. `draft edit` has a known bug. `test_draft_new` is currently failing due to the `draft edit` bug (see below). `test_draft_edit_roundtrip` and `test_draft_attach` are missing.
-
-> [!WARNING]
-> **Bug in `draft edit`:** After the editor closes, the command calls `update_node(conn, node.id)` with no keyword arguments. `update_node` raises `ValueError: No valid fields provided` because no fields are passed. Fix: change the call to `update_node(conn, node.id, updated_at=int(time.time()))`.
+**Status:** All commands implemented and tested. `draft new`, `draft list`, `draft show`, `draft edit`, and `draft attach` are all working. All 5 tests pass.
 
 #### [DONE] `cli/commands/draft.py`
 
@@ -307,9 +304,9 @@ Typer sub-app `draft_app`:
 | Command | Status | Args | Action |
 |---|---|---|---|
 | `draft new "<Title>"` | ✅ | | Create an `Artifact` node, `link_to_project(conn, project_id, node.id, "HAS_ARTIFACT")` |
-| `draft edit <node_id>` | ⚠️ bug | | The "Edit Loop": (1) Fetch node's `content_path` or `metadata.content` from DB, (2) Write to temp `.md` file, (3) Open `$EDITOR` (from context preferences or `$EDITOR` env var), (4) Wait for exit, (5) Read file, (6) Update node `content_path` and `updated_at`. **Currently fails: `update_node` called with no fields.** |
+| `draft edit <node_id>` | ✅ | | The "Edit Loop": (1) Fetch node's `content_path` from DB, (2) Open in `$EDITOR`, (3) Wait for exit, (4) Update node `content_path` and `updated_at`. |
 | `draft list` | ✅ | | List artifacts linked to the active project |
-| `draft attach <node_id> <source_id>` | ❌ not built | | Create a `CITES` edge between an artifact and a source |
+| `draft attach <node_id> <source_id>` | ✅ | | Create a `CITES` edge between an artifact and a source |
 | `draft show <node_id>` | ✅ | | Print the content of an artifact to stdout |
 
 #### [DONE] `cli/editor.py`
@@ -335,10 +332,10 @@ Decision: **Use `content_path`**. The `draft edit` flow writes to `~/.research_c
 
 | Test | Status | Assertion |
 |---|---|---|
-| `test_draft_new` | ⚠️ failing | Artifact node created and linked to project — currently exits with code 1 (investigate in Phase 11) |
-| `test_draft_edit_roundtrip` | ❌ missing | Content written to temp file, read back correctly (mock `$EDITOR` with a no-op) |
+| `test_draft_new` | ✅ | Artifact node created and linked to project |
+| `test_draft_edit_roundtrip` | ✅ | Content written to temp file, read back correctly (mock `$EDITOR` with a no-op) |
 | `test_draft_list` | ✅ | Shows only artifacts in active project |
-| `test_draft_attach` | ❌ missing | `CITES` edge created |
+| `test_draft_attach` | ✅ | `CITES` edge created |
 | `test_draft_show` | ✅ | Prints content to stdout |
 
 **Validation:**
@@ -498,7 +495,7 @@ graph LR
 | `cli/commands/project.py` | 8 | ✅ Done | `project` command group |
 | `cli/commands/library.py` | 9 | ✅ Done | `library` command group |
 | `cli/commands/map.py` | 10 | ✅ Done | `map` command group |
-| `cli/commands/draft.py` | 11 | ⚠️ Partial | `draft` command group — `attach` missing, `edit` bug |
+| `cli/commands/draft.py` | 11 | ✅ Done | `draft` command group — all commands including `attach` |
 | `cli/commands/agent.py` | 12 | ❌ TODO | `agent` command group |
 | `cli/editor.py` | 11 | ✅ Done | External editor integration |
 | `cli/rendering.py` | 10 | ✅ Done | ASCII tree renderer |
@@ -509,7 +506,7 @@ graph LR
 | `tests/test_cli_project.py` | 8 | ✅ Done | Project command tests |
 | `tests/test_cli_library.py` | 9 | ✅ Done | Library command tests |
 | `tests/test_cli_map.py` | 10 | ✅ Done | Map command tests |
-| `tests/test_cli_draft.py` | 11 | ⚠️ Partial | Draft command tests — `attach` and `edit_roundtrip` missing |
+| `tests/test_cli_draft.py` | 11 | ✅ Done | Draft command tests — 5/5 passing |
 | `tests/test_cli_agent.py` | 12 | ❌ TODO | Agent command tests |
 
 ### Modified Files
@@ -529,8 +526,7 @@ graph LR
 
 ### Automated Tests
 
-The full suite currently has 164 collected tests; 159 pass. 5 pre-existing failures:
-- `test_draft_new` — exits with code 1; root cause to be investigated in Phase 11.
+The full suite currently has 166 collected tests; 162 pass. 4 pre-existing failures:
 - `TestFetchUrl` (4 tests in `test_scraper.py`) — `respx` mock setup issue pre-dating Phase 6; unrelated to CLI work.
 
 Run the full suite with:

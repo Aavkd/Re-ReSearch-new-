@@ -98,17 +98,14 @@ All schema operations are idempotent (`IF NOT EXISTS`). No migration scripts hav
 | `project` commands | `cli/commands/project.py` | new, list, switch, status, export — all implemented |
 | `library` commands | `cli/commands/library.py` | add (URL/PDF), list, search (scoped/global) — all implemented |
 | `map` commands | `cli/commands/map.py` | show (tree), connect — implemented |
-| `draft` commands | `cli/commands/draft.py` | new, edit, list, show — implemented (see bug below) |
+| `draft` commands | `cli/commands/draft.py` | new, edit, list, show, attach — all implemented |
 | Tests | `tests/` | ~10 test files covering all backend layers and most CLI commands |
 
 ---
 
 ## 6. Known Bugs
 
-### 🐛 BUG — `draft edit` crashes on timestamp update
-**File:** `cli/commands/draft.py`, `draft_edit()` command  
-**Problem:** After the editor closes, the command calls `update_node(conn, node.id)` with no keyword arguments. The `update_node` function raises `ValueError: No valid fields provided` because `updates` is empty.  
-**Fix:** Change the call to `update_node(conn, node.id, updated_at=int(time.time()))` (or any valid field).
+*No known bugs at this time.*
 
 ---
 
@@ -136,9 +133,6 @@ app.add_typer(draft_app, name="draft")
 
 | Command | Status | Notes |
 |---|---|---|
-| `library recall "<question>"` | ❌ Not built | RAG-based Q&A for active project; needs `backend/rag/recall.py` |
-| `map cluster` | ❌ Not built | LLM auto-clustering of project nodes |
-| `draft attach <node_id> <source_id>` | ❌ Not built | Create `CITES` edge between artifact and source |
 | `agent hire` / `agent status` | ❌ Not built | `cli/commands/agent.py` not created |
 
 ### 🗂️ Missing test file
@@ -196,17 +190,13 @@ The new commands can be invoked by running their modules directly, but this is a
 
 These tasks are ordered by priority and dependency.
 
-### Step 1 — Fix the `draft edit` bug (5 min)
-
-In `cli/commands/draft.py`, `draft_edit()`: change `update_node(conn, node.id)` to `update_node(conn, node.id, updated_at=int(time.time()))`.
-
-### Step 2 — Wire the new commands into `cli/main.py` (30 min) — CRITICAL
+### Step 1 — Wire the new commands into `cli/main.py` (30 min) — CRITICAL
 
 Mount `project_app`, `library_app`, `map_app`, `draft_app` in `cli/main.py`. Remove (or keep as legacy) the old `db`, `scrape`, `ingest`, `research` commands per the Phase 13 plan in `implementation_plan.md`.
 
 After this step, the full new TUI is usable end-to-end for the first time.
 
-### Step 3 — Validate the wired CLI works (smoke test)
+### Step 2 — Validate the wired CLI works (smoke test)
 
 ```bash
 python cli/main.py project new "Test"
@@ -216,25 +206,17 @@ python cli/main.py map show
 python cli/main.py draft new "Notes"
 ```
 
-### Step 4 — Write `tests/test_cli_map.py` (1–2 hrs)
-
-The `map show` and `map connect` commands have no test coverage.
-
-### Step 5 — Build `cli/commands/agent.py` (Phase 12, 2–3 hrs)
+### Step 3 — Build `cli/commands/agent.py` (Phase 12, 2–3 hrs)
 
 Wrap the existing `run_research()` in a project-aware CLI command that auto-links the result artifact to the active project. Also requires adding `artifact_id` to `ResearchState` in `backend/agent/state.py` so the runner surfaces the created node ID.
 
-### Step 6 — Build `backend/rag/recall.py` + `library recall` command (Phase 9 completion, 2–3 hrs)
-
-A RAG-based Q&A endpoint scoped to the active project. The search infrastructure is already fully in place — this is a thin LLM wrapper on top.
-
-### Step 7 — Clean up code quality issues
+### Step 4 — Clean up code quality issues
 
 - Remove dead `_visit()` code from `cli/rendering.py`
 - Trim debug comments from `backend/db/projects.py`
 - Remove `sqlalchemy` from `requirements.txt`
 
-### Step 8 — Update documentation (1 hr)
+### Step 5 — Update documentation (1 hr)
 
 Replace `docs/DOCS_BACKEND.md` and `docs/DOCS_AI_CORE.md` with accurate descriptions of the Python/FastAPI/LangGraph implementation. Archive or delete `docs/DOCS_FRONTEND.md`.
 
@@ -250,6 +232,6 @@ Replace `docs/DOCS_BACKEND.md` and `docs/DOCS_AI_CORE.md` with accurate descript
 | 8 | `project` command group | ✅ Complete |
 | 9 | `library` command group | ⚠️ Partial — `recall` missing |
 | 10 | `map` command group | ⚠️ Partial — `cluster` missing, no tests |
-| 11 | `draft` command group | ⚠️ Partial — `attach` missing, `edit` bug |
+| 11 | `draft` command group | ✅ Complete |
 | 12 | `agent` command group | ❌ Not started |
 | 13 | CLI restructure / wiring | ❌ Not started — blocks full usability |

@@ -1,13 +1,14 @@
 """Draft commands for creating and editing artifacts."""
 
 import subprocess
-import tempfile
+import time
 import typer
 from pathlib import Path
 import os
 import shutil
 
 from backend.db import get_connection, init_db
+from backend.db.edges import connect_nodes
 from backend.db.nodes import create_node, get_node, update_node, list_nodes
 from backend.db.projects import link_to_project, get_project_nodes
 from backend.config import settings
@@ -70,11 +71,6 @@ def draft_new(
 
         typer.echo(f"✅ Draft created: {title} ({node.id})")
         typer.echo(f"📝 Content file: {content_path}")
-        
-        # Optional: Ask to open immediately?
-        if typer.confirm("Open in editor now?", default=True):
-             _open_editor(content_path)
-             typer.echo("✅ Saved.")
 
     finally:
         conn.close()
@@ -113,9 +109,10 @@ def draft_edit(
         typer.echo(f"📝 Opening {node.title}...")
         _open_editor(content_path)
         typer.echo("✅ Saved.")
-        
-        # Update timestamp
-        update_node(conn, node.id) # trigger updated_at
+
+        # Refresh updated_at by re-writing the existing content_path
+        rel_path = node.content_path or f"content/{node.id}.md"
+        update_node(conn, node.id, content_path=rel_path)
         
     finally:
         conn.close()
@@ -144,6 +141,34 @@ def draft_list() -> None:
         for art in artifacts:
             typer.echo(f" - {art.title} [{art.id}]")
             
+    finally:
+        conn.close()
+
+
+@draft_app.command("attach")
+@require_context
+def draft_attach(
+    node_id: str = typer.Argument(..., help="ID of the artifact."),
+    source_id: str = typer.Argument(..., help="ID of the source node to cite."),
+) -> None:
+    """Create a CITES edge from an artifact to a source node."""
+    conn = get_connection()
+    init_db(conn)
+
+    try:
+        artifact = get_node(conn, node_id)
+        if not artifact:
+            typer.echo(f"❌ Artifact {node_id} not found.")
+            raise typer.Exit(code=1)
+
+        source = get_node(conn, source_id)
+        if not source:
+            typer.echo(f"❌ Source {source_id} not found.")
+            raise typer.Exit(code=1)
+
+        connect_nodes(conn, node_id, source_id, "CITES")
+        typer.echo(f"✅ {artifact.title} now cites {source.title}")
+
     finally:
         conn.close()
 
