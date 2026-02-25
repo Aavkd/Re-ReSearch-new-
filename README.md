@@ -103,8 +103,8 @@ pytest tests/ -v --tb=short
 | F3 | ✅ Complete | App shell, sidebar, routing skeleton |
 | F4 | ✅ Complete | `ProjectSwitcher` + `NewProjectModal` (dropdown, create, export) |
 | F5 | ✅ Complete | `LibraryScreen` — URL/PDF ingest, debounced search, result cards |
-| F6 | 🔲 Planned | `MapScreen` (React Flow graph canvas) |
-| F7 | 🔲 Planned | `DraftsScreen` (CodeMirror Markdown editor) |
+| F6 | ✅ Complete | `MapScreen` (React Flow graph canvas, dagre layout, node detail panel) |
+| F7 | ✅ Complete | `DraftsScreen` (CodeMirror Markdown editor, auto-save, project-scoped draft list) |
 | F8 | 🔲 Planned | `AgentScreen` (SSE progress + report) |
 
 ## CLI Commands

@@ -83,6 +83,30 @@ Build a browser-based React frontend for the Re:Search app inside a new `fronten
 
 ---
 
+## Implementation Notes (Phases F6 & F7 — completed Feb 2026)
+
+### F6 — Deviations from plan
+
+| Item | Plan | Actual |
+|---|---|---|
+| React Flow import | `import ... from "reactflow"` | Package installed as `@xyflow/react` v12 (the renamed package). All imports use `@xyflow/react`. Custom node types use `Node<TData, TType>` + `NodeProps<NodeType>` generics per the v12 API. |
+| Icon characters | Unspecified | Plain Unicode emoji used (📁 📄 📜) inside custom node components — no icon library dependency needed. |
+| `@dagrejs/dagre` layout | Was listed as a dep to add | Already present in `package.json` from a prior scaffold step. No install needed. |
+| `@xyflow/react/dist/style.css` | Must be imported | CSS import added in `GraphCanvas.tsx`; mocked to `{}` in the test via `vi.mock` to avoid Vite CSS-in-jsdom issues. |
+| React Flow test strategy | Not specified | `@xyflow/react` mocked with a simple `div`-based renderer in Vitest; `@dagrejs/dagre` mocked with a no-op layout function (positions all nodes at 0,0). |
+
+### F7 — Deviations from plan
+
+| Item | Plan | Actual |
+|---|---|---|
+| `minimalSetup` from `codemirror` umbrella | `import { minimalSetup } from "codemirror"` | `codemirror` umbrella package is not listed in `package.json`. Replaced with individual `lineNumbers()` and `highlightActiveLine()` from `@codemirror/view`. |
+| `EditorView.domEventHandlers` for blur | Static method on `EditorView` | Confirmed available in `@codemirror/view` v6. The test mock adds `domEventHandlers` and `theme` as static properties on the mock constructor. |
+| Draft content storage | `content_path` file read | Browser has no filesystem access. Content stored in `metadata.content_body` and saved back via `PUT /nodes/{id}` with updated metadata. Tracked with a comment. |
+| `DraftList` filtering source | `useNodeList("Artifact")` + `useProjectGraph` | Follow plan exactly: all artifacts fetched globally, then filtered to those whose IDs appear in the active project's graph node set. |
+| Screen-level save tests | Test blur + Ctrl+S at `DraftsScreen` level | `DraftEditor` is mocked in `DraftsScreen.test.tsx` with a `<textarea>` that fires `onSave` on `blur` and `Ctrl+S`. The actual CodeMirror extension behavior is tested in `DraftEditor.test.tsx`. |
+
+---
+
 ```
 frontend/
 ├── index.html
