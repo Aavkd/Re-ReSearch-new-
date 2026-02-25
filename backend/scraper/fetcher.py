@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-import time
 
 import httpx
 
@@ -22,7 +21,9 @@ _SPA_PATTERNS = [
 
 _DEFAULT_HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (compatible; ReSearch-Bot/1.0; +https://github.com/research-bot)"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/122.0.0.0 Safari/537.36"
     )
 }
 
@@ -71,11 +72,13 @@ def fetch_url(url: str) -> RawPage:
     Playwright browser when a JavaScript SPA fingerprint is detected in the
     initial response.
 
+    Rate-limiting is handled at the agent layer (thread-pool worker count)
+    rather than with a per-request sleep, which was the primary latency
+    bottleneck when scraping multiple URLs.
+
     Raises:
         httpx.HTTPStatusError: If the server returns a 4xx/5xx status code.
     """
-    time.sleep(settings.rate_limit_delay)
-
     with httpx.Client(
         headers=_DEFAULT_HEADERS,
         timeout=settings.request_timeout,

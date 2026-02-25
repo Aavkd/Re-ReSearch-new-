@@ -77,10 +77,10 @@ class Settings:
     # Scraper
     # ------------------------------------------------------------------
     rate_limit_delay: float = field(
-        default_factory=lambda: float(os.environ.get("RATE_LIMIT_DELAY", "1.0"))
+        default_factory=lambda: float(os.environ.get("RATE_LIMIT_DELAY", "0.0"))
     )
     request_timeout: float = field(
-        default_factory=lambda: float(os.environ.get("REQUEST_TIMEOUT", "30.0"))
+        default_factory=lambda: float(os.environ.get("REQUEST_TIMEOUT", "15.0"))
     )
 
     # ------------------------------------------------------------------
@@ -94,6 +94,9 @@ class Settings:
     )
     search_provider_timeout: float = field(
         default_factory=lambda: float(os.environ.get("SEARCH_PROVIDER_TIMEOUT", "10.0"))
+    )
+    searxng_instance_timeout: float = field(
+        default_factory=lambda: float(os.environ.get("SEARXNG_INSTANCE_TIMEOUT", "5.0"))
     )
     search_retry_max: int = field(
         default_factory=lambda: int(os.environ.get("SEARCH_RETRY_MAX", "3"))
@@ -118,9 +121,13 @@ class Settings:
     agent_max_iterations: int = field(
         default_factory=lambda: int(os.environ.get("AGENT_MAX_ITERATIONS", "5"))
     )
-    agent_max_concurrent_scrapes: int = field(
-        default_factory=lambda: int(os.environ.get("AGENT_MAX_CONCURRENT_SCRAPES", "3"))
+    scrape_concurrency: int = field(
+        default_factory=lambda: int(os.environ.get("SCRAPE_CONCURRENCY", "5"))
     )
+
+    @property
+    def agent_max_concurrent_scrapes(self) -> int:  # backward-compat alias
+        return self.scrape_concurrency
 
     # ------------------------------------------------------------------
     # CLI Persistence

@@ -384,7 +384,7 @@ class TestBuildDefaultChain:
         names = [p.name for p in chain._providers]
         assert "SearXNG" in names
         assert "DuckDuckGo" in names
-        assert "Brave Search" not in names  # no key configured
+        assert "Brave" not in names  # no key configured
 
     def test_includes_brave_when_key_configured(self):
         from backend.agent.search_providers import BraveSearchProvider, build_default_chain
@@ -395,7 +395,7 @@ class TestBuildDefaultChain:
             chain = build_default_chain()
 
         names = [p.name for p in chain._providers]
-        assert "Brave Search" in names
+        assert "Brave" in names
 
 
 # ===========================================================================

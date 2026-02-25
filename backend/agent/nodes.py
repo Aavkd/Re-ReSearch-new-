@@ -8,8 +8,8 @@ state bag while still allowing node functions to access the DB.
 Public factories
 ----------------
 ``make_planner``     — decomposes the goal into search queries via LLM.
-``make_searcher``    — runs DuckDuckGo searches for each query.
-``make_scraper``     — scrapes and ingests URLs from the searcher.
+``make_searcher``    — runs web searches for each query **in parallel**.
+``make_scraper``     — scrapes and ingests URLs **in parallel**.
 ``make_synthesiser`` — writes the final report via LLM.
 ``make_evaluator``   — decides whether to loop or terminate.
 """
@@ -17,6 +17,7 @@ Public factories
 from __future__ import annotations
 
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from backend.agent.state import ResearchState
@@ -29,12 +30,7 @@ from backend.config import settings
 # ---------------------------------------------------------------------------
 
 def _get_llm() -> Any:
-    """Return a configured LangChain chat model based on ``settings``.
-
-    Reads ``settings.llm_provider`` (``"ollama"`` or ``"openai"``) and
-    instantiates the matching LangChain integration with ``temperature=0``
-    for deterministic output.
-    """
+    """Return a configured LangChain chat model based on ``settings``."""
     if settings.llm_provider == "openai":
         from langchain_openai import ChatOpenAI
 
@@ -85,20 +81,28 @@ def make_planner(conn: sqlite3.Connection):
 def make_searcher(conn: sqlite3.Connection):
     """Return a *searcher* node function.
 
-    The searcher runs a DuckDuckGo search for each query in the plan,
-    collecting and deduplicating the result URLs.
+    Runs all queries **in parallel** using a ``ThreadPoolExecutor`` so that
+    the N queries do not each block on the previous one.  Results are merged
+    and deduplicated while preserving insertion order.
     """
 
     def searcher(state: ResearchState) -> dict:
+        queries = state.get("plan", [])
         urls: list[str] = []
-        for query in state.get("plan", []):
-            print(f"[SEARCHING] Query: {query!r}")
-            try:
-                found = web_search(query)
-                print(f"[SEARCHING] Found {len(found)} URL(s).")
-                urls.extend(found)
-            except Exception as exc:
-                print(f"[SEARCHING] web_search failed for {query!r}: {exc}")
+
+        with ThreadPoolExecutor(max_workers=len(queries) or 1) as pool:
+            future_to_query = {
+                pool.submit(web_search, query): query for query in queries
+            }
+            for future in as_completed(future_to_query):
+                query = future_to_query[future]
+                print(f"[SEARCHING] Query: {query!r}")
+                try:
+                    found = future.result()
+                    print(f"[SEARCHING] Found {len(found)} URL(s).")
+                    urls.extend(found)
+                except Exception as exc:
+                    print(f"[SEARCHING] web_search failed for {query!r}: {exc}")
 
         # Deduplicate while preserving insertion order.
         seen: set[str] = set()
@@ -117,26 +121,33 @@ def make_searcher(conn: sqlite3.Connection):
 def make_scraper(conn: sqlite3.Connection):
     """Return a *scraper* node function.
 
-    The scraper ingests up to ``settings.agent_max_concurrent_scrapes`` new
-    URLs (those not already in ``urls_scraped``).  Failures are logged and
-    skipped rather than aborting the pipeline.
+    Scrapes up to ``settings.scrape_concurrency`` new URLs **in parallel**
+    using a ``ThreadPoolExecutor``.  Failures are logged and skipped rather
+    than aborting the pipeline.
     """
 
     def scraper(state: ResearchState) -> dict:
         already_scraped: list[str] = list(state.get("urls_scraped", []))
         findings: list[str] = list(state.get("findings", []))
-        limit = settings.agent_max_concurrent_scrapes
+        limit = settings.scrape_concurrency
 
         new_urls = [u for u in state.get("urls_found", []) if u not in already_scraped]
-        for url in new_urls[:limit]:
-            print(f"[SCRAPING] {url}")
-            try:
-                summary = scrape_and_ingest(conn, url)
-                already_scraped.append(url)
-                findings.append(summary)
-                print(f"[SCRAPING] ✓ {summary}")
-            except Exception as exc:
-                print(f"[SCRAPING] ✗ Failed {url!r}: {exc}")
+        batch = new_urls[:limit]
+
+        with ThreadPoolExecutor(max_workers=limit) as pool:
+            future_to_url = {
+                pool.submit(scrape_and_ingest, conn, url): url for url in batch
+            }
+            for future in as_completed(future_to_url):
+                url = future_to_url[future]
+                print(f"[SCRAPING] {url}")
+                try:
+                    summary = future.result()
+                    already_scraped.append(url)
+                    findings.append(summary)
+                    print(f"[SCRAPING] ✓ {summary}")
+                except Exception as exc:
+                    print(f"[SCRAPING] ✗ Failed {url!r}: {exc}")
 
         return {
             "urls_scraped": already_scraped,

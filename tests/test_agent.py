@@ -306,7 +306,7 @@ class TestScraperNode:
 
         with patch("backend.agent.nodes.scrape_and_ingest", side_effect=fake_ingest), \
              patch("backend.agent.nodes.settings") as mock_settings:
-            mock_settings.agent_max_concurrent_scrapes = 3
+            mock_settings.scrape_concurrency = 3
             scraper(_base_state(urls_found=urls))
 
         assert call_count == 3

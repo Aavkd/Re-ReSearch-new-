@@ -13,7 +13,14 @@ Transform the current flat CLI ([cli/main.py](file:///c:/Users/speee/.openclaw/w
 | RAG (chunker, embedder, ingestor) | ✅ Complete | `backend/rag/ingestor.py`, `pdf_ingestor.py` |
 | Agent (LangGraph researcher) | ✅ Complete | `backend/agent/runner.py`, `graph.py` |
 | FastAPI HTTP layer | ✅ Complete | `backend/api/routers/*.py` |
-| CLI | ⚠️ Flat harness | `cli/main.py` — raw commands, no project scoping |
+| CLI context & state | ✅ Complete | `cli/context.py`, `backend/config.py` |
+| Graph-scoping helpers | ✅ Complete | `backend/db/projects.py` |
+| `project` command group | ✅ Complete | `cli/commands/project.py` |
+| `library` command group | ⚠️ Partial | `cli/commands/library.py` — `recall` command missing |
+| `map` command group | ⚠️ Partial | `cli/commands/map.py` — `cluster` command missing, no tests |
+| `draft` command group | ⚠️ Partial | `cli/commands/draft.py` — `attach` missing, `edit` has a bug |
+| `agent` command group | ❌ Not started | `cli/commands/agent.py` does not exist |
+| CLI wiring | ❌ Not started | `cli/main.py` — new command groups not mounted |
 
 ### What We're Building
 
@@ -32,7 +39,7 @@ The new CLI must implement:
 
 ---
 
-### Phase 6 — State Management & Context Layer
+### Phase 6 — State Management & Context Layer ✅ COMPLETE
 
 **Goal:** Build the persistence mechanism so all subsequent commands can know "Where am I?"
 
@@ -77,7 +84,7 @@ pytest tests/test_cli_context.py -v
 
 ---
 
-### Phase 7 — Backend Graph-Scoping Helpers
+### Phase 7 — Backend Graph-Scoping Helpers ✅ COMPLETE
 
 **Goal:** Add backend functions to support graph-based project scoping. A "Project" is a Node of type `Project`. Scoping means "find all nodes reachable from the project root within 1–2 hops."
 
@@ -129,7 +136,7 @@ pytest tests/test_projects.py -v
 
 ---
 
-### Phase 8 — `project` Command Group
+### Phase 8 — `project` Command Group ✅ COMPLETE
 
 **Goal:** CLI commands for project lifecycle management.
 
@@ -174,45 +181,45 @@ python cli/main.py project list
 
 ---
 
-### Phase 9 — `library` Command Group
+### Phase 9 — `library` Command Group ⚠️ PARTIAL
 
 **Goal:** Context-aware ingestion and search. All operations auto-link to the active project.
 
 **Dependencies:** Phase 7 (scoping helpers) + Phase 3 (RAG ingestor, already complete).
 
-#### [NEW] `cli/commands/library.py`
+**Status:** `library add`, `library list`, and `library search` are implemented. `library recall` and `backend/rag/recall.py` are not yet built. The `test_library_recall` test case is also missing.
+
+#### [DONE] `cli/commands/library.py`
 
 Typer sub-app `library_app`:
 
-| Command | Args / Flags | Action |
-|---|---|---|
-| `library add <target>` | `<url\|filepath>` | Detect URL vs file path. Call `ingest_url` or `ingest_pdf`. Then `link_to_project(conn, project_id, node.id, "HAS_SOURCE")` |
-| `library search "<query>"` | `--mode fuzzy\|semantic\|hybrid`, `--global` | If `--global`: search all nodes. Else: restrict results to `get_project_nodes(conn, project_id)` |
-| `library recall "<question>"` | | RAG query scoped to active project. Retrieve top-k chunks, format prompt, call LLM, print answer with source citations |
-| `library list` | `--type Source\|Artifact\|...` | List nodes connected to the active project, optionally filtered by type |
+| Command | Status | Args / Flags | Action |
+|---|---|---|---|
+| `library add <target>` | ✅ Done | `<url\|filepath>` | Detect URL vs file path. Call `ingest_url` or `ingest_pdf`. Then `link_to_project(conn, project_id, node.id, "HAS_SOURCE")` |
+| `library search "<query>"` | ✅ Done | `--mode fuzzy\|semantic\|hybrid`, `--global` | If `--global`: search all nodes. Else: restrict results to `get_project_nodes(conn, project_id)` |
+| `library recall "<question>"` | ❌ TODO | | RAG query scoped to active project. Retrieve top-k chunks, format prompt, call LLM, print answer with source citations |
+| `library list` | ✅ Done | `--type Source\|Artifact\|...` | List nodes connected to the active project, optionally filtered by type |
 
-#### Backend support needed (no new files, small additions):
+#### [DONE] `backend/db/search.py`
 
-#### [MODIFY] `backend/db/search.py`
+The `scope_ids: list[str] | None` parameter (called `node_ids` in the plan) is already implemented on `fts_search`, `vector_search`, and `hybrid_search`. No further changes needed.
 
-Add a `node_ids: list[str] | None` parameter to `fts_search`, `vector_search`, and `hybrid_search`. When set, filter results to only those IDs (i.e., the project-scoped node set). Implementation: add `WHERE id IN (...)` clause.
-
-#### [NEW] `backend/rag/recall.py`
+#### [TODO] `backend/rag/recall.py`
 
 RAG-based Q&A function:
 - `recall(conn, question: str, project_id: str | None = None) -> str`
 - Steps: (1) Get scoped node IDs via `get_project_nodes`, (2) Embed the question, (3) `hybrid_search` with node_ids filter, (4) format top-k chunks as LLM context, (5) call LLM with a "answer from sources" system prompt, (6) return formatted answer with source citations.
 
-#### [NEW] `tests/test_cli_library.py`
+#### [PARTIAL] `tests/test_cli_library.py`
 
-| Test | Assertion |
-|---|---|
-| `test_library_add_url` | Source node created and linked to project |
-| `test_library_add_pdf` | PDF node created and linked to project |
-| `test_library_search_scoped` | Returns only nodes in active project |
-| `test_library_search_global` | Returns nodes across all projects |
-| `test_library_list` | Lists project-scoped nodes |
-| `test_library_recall` | Returns LLM answer (mocked) with citations |
+| Test | Status | Assertion |
+|---|---|---|
+| `test_library_add_url` | ✅ Done | Source node created and linked to project |
+| `test_library_add_pdf` | ❌ missing | PDF node created and linked to project |
+| `test_library_search_scoped` | ✅ Done | Returns only nodes in active project |
+| `test_library_search_global` | ❌ missing | Returns nodes across all projects |
+| `test_library_list` | ✅ Done | Lists project-scoped nodes |
+| `test_library_recall` | ❌ missing | Returns LLM answer (mocked) with citations |
 
 **Validation:**
 ```bash
@@ -227,25 +234,27 @@ python cli/main.py library list
 
 ---
 
-### Phase 10 — `map` Command Group
+### Phase 10 — `map` Command Group ⚠️ PARTIAL
 
 **Goal:** Expose graph structure operations for the active project's "Crazy Board."
 
 **Dependencies:** Phase 7 (scoping helpers).
 
-#### [NEW] `cli/commands/map.py`
+**Status:** `map show` and `map connect` are implemented. `map cluster` is not yet built. `tests/test_cli_map.py` does not exist.
+
+#### [DONE] `cli/commands/map.py`
 
 Typer sub-app `map_app`:
 
-| Command | Args | Action |
-|---|---|---|
-| `map show` | `--format tree\|list` | Fetch `get_project_nodes(conn, project_id)` + edges. Render as ASCII tree (nodes as branches, relations as labels) or flat list |
-| `map connect` | `<node_a> <node_b> --label "<relation>"` | `connect_nodes(conn, node_a, node_b, relation)`. Validate both nodes belong to the project |
-| `map cluster` | | (Advanced) Call LLM with all project node titles/summaries, ask it to suggest thematic clusters and connections. Print proposed edges; optionally auto-apply with `--apply` flag |
+| Command | Status | Args | Action |
+|---|---|---|---|
+| `map show` | ✅ Done | `--format tree\|list` | Fetch `get_project_nodes(conn, project_id)` + edges. Render as ASCII tree (nodes as branches, relations as labels) or flat list |
+| `map connect` | ✅ Done | `<node_a> <node_b> --label "<relation>"` | `connect_nodes(conn, node_a, node_b, relation)`. Validate both nodes belong to the project |
+| `map cluster` | ❌ TODO | | (Advanced) Call LLM with all project node titles/summaries, ask it to suggest thematic clusters and connections. Print proposed edges; optionally auto-apply with `--apply` flag |
 
 #### ASCII tree renderer (helper):
 
-#### [NEW] `cli/rendering.py`
+#### [DONE] `cli/rendering.py`
 
 Utility for rendering a project graph as ASCII:
 - `render_tree(nodes: list[Node], edges: list[Edge], root_id: str) -> str`
@@ -259,14 +268,14 @@ Utility for rendering a project graph as ASCII:
   └── [HAS_ARTIFACT] 📝 Report: State of SSBs
   ```
 
-#### [NEW] `tests/test_cli_map.py`
+#### [TODO] `tests/test_cli_map.py` — file does not exist yet
 
-| Test | Assertion |
-|---|---|
-| `test_map_show_tree` | Output contains project name and child nodes |
-| `test_map_show_list` | Output contains flat list of nodes |
-| `test_map_connect` | Edge created between two nodes |
-| `test_map_connect_invalid_node` | Error when node not in project |
+| Test | Status | Assertion |
+|---|---|---|
+| `test_map_show_tree` | ❌ | Output contains project name and child nodes |
+| `test_map_show_list` | ❌ | Output contains flat list of nodes |
+| `test_map_connect` | ❌ | Edge created between two nodes |
+| `test_map_connect_invalid_node` | ❌ | Error when node not in project |
 
 **Validation:**
 ```bash
@@ -279,25 +288,30 @@ python cli/main.py map connect <nodeA_id> <nodeB_id> --label "RELATED_TO"
 
 ---
 
-### Phase 11 — `draft` Command Group
+### Phase 11 — `draft` Command Group ⚠️ PARTIAL
 
 **Goal:** Create and edit artifact documents via the user's external editor.
 
 **Dependencies:** Phase 7 (project linking), Phase 1 (node CRUD).
 
-#### [NEW] `cli/commands/draft.py`
+**Status:** `draft new`, `draft edit`, `draft list`, and `draft show` are implemented. `draft attach` is not yet built. There is a known bug in `draft edit` (see below).
+
+> [!WARNING]
+> **Bug in `draft edit`:** After the editor closes, the command calls `update_node(conn, node.id)` with no keyword arguments. `update_node` raises `ValueError: No valid fields provided` because no fields are passed. Fix: change the call to `update_node(conn, node.id, updated_at=int(time.time()))`.
+
+#### [DONE] `cli/commands/draft.py`
 
 Typer sub-app `draft_app`:
 
-| Command | Args | Action |
-|---|---|---|
-| `draft new "<Title>"` | | Create an `Artifact` node, `link_to_project(conn, project_id, node.id, "HAS_ARTIFACT")` |
-| `draft edit <node_id>` | | The "Edit Loop": (1) Fetch node's `content_path` or `metadata.content` from DB, (2) Write to temp `.md` file, (3) Open `$EDITOR` (from context preferences or `$EDITOR` env var), (4) Wait for exit, (5) Read file, (6) Update node `content_path` and `updated_at` |
-| `draft list` | | List artifacts linked to the active project |
-| `draft attach <node_id> <source_id>` | | Create a `CITES` edge between an artifact and a source |
-| `draft show <node_id>` | | Print the content of an artifact to stdout |
+| Command | Status | Args | Action |
+|---|---|---|---|
+| `draft new "<Title>"` | ✅ | | Create an `Artifact` node, `link_to_project(conn, project_id, node.id, "HAS_ARTIFACT")` |
+| `draft edit <node_id>` | ⚠️ bug | | The "Edit Loop": (1) Fetch node's `content_path` or `metadata.content` from DB, (2) Write to temp `.md` file, (3) Open `$EDITOR` (from context preferences or `$EDITOR` env var), (4) Wait for exit, (5) Read file, (6) Update node `content_path` and `updated_at` |
+| `draft list` | ✅ | | List artifacts linked to the active project |
+| `draft attach <node_id> <source_id>` | ❌ not built | | Create a `CITES` edge between an artifact and a source |
+| `draft show <node_id>` | ✅ | | Print the content of an artifact to stdout |
 
-#### [NEW] `cli/editor.py`
+#### [DONE] `cli/editor.py`
 
 The editor integration module (from [DOCS_CLI_DESIGN.md §4.3](file:///c:/Users/speee/.openclaw/workspace/Search/docs/DOCS_CLI_DESIGN.md#L145-165)):
 
@@ -316,15 +330,15 @@ Add optional `content_body` field handling. Currently `content_path` exists but 
 
 Decision: **Use `content_path`**. The `draft edit` flow writes to `~/.research_cli/drafts/<node_id>.md` and sets `content_path` accordingly.
 
-#### [NEW] `tests/test_cli_draft.py`
+#### [PARTIAL] `tests/test_cli_draft.py`
 
-| Test | Assertion |
-|---|---|
-| `test_draft_new` | Artifact node created and linked to project |
-| `test_draft_edit_roundtrip` | Content written to temp file, read back correctly (mock `$EDITOR` with a no-op) |
-| `test_draft_list` | Shows only artifacts in active project |
-| `test_draft_attach` | `CITES` edge created |
-| `test_draft_show` | Prints content to stdout |
+| Test | Status | Assertion |
+|---|---|---|
+| `test_draft_new` | ✅ | Artifact node created and linked to project |
+| `test_draft_edit_roundtrip` | ❌ missing | Content written to temp file, read back correctly (mock `$EDITOR` with a no-op) |
+| `test_draft_list` | ✅ | Shows only artifacts in active project |
+| `test_draft_attach` | ❌ missing | `CITES` edge created |
+| `test_draft_show` | ✅ | Prints content to stdout |
 
 **Validation:**
 ```bash
@@ -339,7 +353,7 @@ python cli/main.py draft show <node_id>
 
 ---
 
-### Phase 12 — `agent` Command Group
+### Phase 12 — `agent` Command Group ❌ NOT STARTED
 
 **Goal:** Wrap the existing `run_research` function in a project-aware command that auto-links outputs.
 
@@ -388,11 +402,14 @@ python cli/main.py map show  # Report should appear in the tree
 
 ---
 
-### Phase 13 — CLI Restructure & Cleanup
+### Phase 13 — CLI Restructure & Cleanup ❌ NOT STARTED
 
 **Goal:** Wire all command groups into the main app and retire the old flat commands.
 
 **Dependencies:** Phases 8–12.
+
+> [!IMPORTANT]
+> This is the highest-priority remaining task. The new command groups (`project`, `library`, `map`, `draft`) are all implemented but completely unreachable because `cli/main.py` has not been updated. Nothing in the new CLI works from the entry-point until this phase runs.
 
 #### [MODIFY] `cli/main.py`
 
@@ -471,39 +488,39 @@ graph LR
 
 ## File Inventory
 
-### New Files (14)
+### New Files
 
-| File | Phase | Purpose |
-|---|---|---|
-| `cli/context.py` | 6 | State management (`context.json` read/write) |
-| `cli/commands/__init__.py` | 13 | Package init |
-| `cli/commands/project.py` | 8 | `project` command group |
-| `cli/commands/library.py` | 9 | `library` command group |
-| `cli/commands/map.py` | 10 | `map` command group |
-| `cli/commands/draft.py` | 11 | `draft` command group |
-| `cli/commands/agent.py` | 12 | `agent` command group |
-| `cli/editor.py` | 11 | External editor integration |
-| `cli/rendering.py` | 10 | ASCII tree renderer |
-| `backend/db/projects.py` | 7 | Graph-scoping helpers |
-| `backend/rag/recall.py` | 9 | RAG-based Q&A |
-| `tests/test_cli_context.py` | 6 | Context layer tests |
-| `tests/test_projects.py` | 7 | Graph scoping tests |
-| `tests/test_cli_project.py` | 8 | Project command tests |
-| `tests/test_cli_library.py` | 9 | Library command tests |
-| `tests/test_cli_map.py` | 10 | Map command tests |
-| `tests/test_cli_draft.py` | 11 | Draft command tests |
-| `tests/test_cli_agent.py` | 12 | Agent command tests |
+| File | Phase | Status | Purpose |
+|---|---|---|---|
+| `cli/context.py` | 6 | ✅ Done | State management (`context.json` read/write) |
+| `cli/commands/__init__.py` | 13 | ✅ Done | Package init |
+| `cli/commands/project.py` | 8 | ✅ Done | `project` command group |
+| `cli/commands/library.py` | 9 | ⚠️ Partial | `library` command group — `recall` missing |
+| `cli/commands/map.py` | 10 | ⚠️ Partial | `map` command group — `cluster` missing |
+| `cli/commands/draft.py` | 11 | ⚠️ Partial | `draft` command group — `attach` missing, `edit` bug |
+| `cli/commands/agent.py` | 12 | ❌ TODO | `agent` command group |
+| `cli/editor.py` | 11 | ✅ Done | External editor integration |
+| `cli/rendering.py` | 10 | ✅ Done | ASCII tree renderer |
+| `backend/db/projects.py` | 7 | ✅ Done | Graph-scoping helpers |
+| `backend/rag/recall.py` | 9 | ❌ TODO | RAG-based Q&A |
+| `tests/test_cli_context.py` | 6 | ✅ Done | Context layer tests |
+| `tests/test_projects.py` | 7 | ✅ Done | Graph scoping tests |
+| `tests/test_cli_project.py` | 8 | ✅ Done | Project command tests |
+| `tests/test_cli_library.py` | 9 | ⚠️ Partial | Library command tests — `recall` test missing |
+| `tests/test_cli_map.py` | 10 | ❌ TODO | Map command tests — file does not exist |
+| `tests/test_cli_draft.py` | 11 | ⚠️ Partial | Draft command tests — `attach` and `edit_roundtrip` missing |
+| `tests/test_cli_agent.py` | 12 | ❌ TODO | Agent command tests |
 
-### Modified Files (5)
+### Modified Files
 
-| File | Phase | Change |
-|---|---|---|
-| `backend/config.py` | 6 | Add `cli_config_dir` setting |
-| `backend/db/search.py` | 9 | Add `node_ids` filter param to search functions |
-| `backend/agent/state.py` | 12 | Add `artifact_id` field |
-| `backend/agent/runner.py` | 12 | Surface `artifact_id` in return state |
-| `cli/main.py` | 13 | Replace old commands with new sub-apps |
-| `README.md` | 13 | Updated CLI documentation |
+| File | Phase | Status | Change |
+|---|---|---|---|
+| `backend/config.py` | 6 | ✅ Done | `cli_config_dir` setting added |
+| `backend/db/search.py` | 9 | ✅ Done | `scope_ids` filter param added to all search functions |
+| `backend/agent/state.py` | 12 | ❌ TODO | Add `artifact_id` field |
+| `backend/agent/runner.py` | 12 | ❌ TODO | Surface `artifact_id` in return state |
+| `cli/main.py` | 13 | ❌ TODO | Replace old commands with new sub-apps |
+| `README.md` | 13 | ❌ TODO | Updated CLI documentation |
 
 ---
 

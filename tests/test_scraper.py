@@ -101,8 +101,7 @@ class TestFetchUrl:
             respx.get("https://example.com/article").mock(
                 return_value=httpx.Response(200, text=_SIMPLE_HTML)
             )
-            with patch("time.sleep"):
-                raw = fetch_url("https://example.com/article")
+            raw = fetch_url("https://example.com/article")
 
         assert isinstance(raw, RawPage)
         assert raw.url == "https://example.com/article"
@@ -115,23 +114,20 @@ class TestFetchUrl:
             respx.get("https://example.com/missing").mock(
                 return_value=httpx.Response(404, text="Not Found")
             )
-            with patch("time.sleep"):
-                with pytest.raises(httpx.HTTPStatusError):
-                    fetch_url("https://example.com/missing")
+            with pytest.raises(httpx.HTTPStatusError):
+                fetch_url("https://example.com/missing")
 
-    def test_rate_limit_sleep_is_called(self) -> None:
-        """``time.sleep`` is called with the configured delay."""
+    def test_no_rate_limit_sleep_on_fetch(self) -> None:
+        """``fetch_url`` must NOT call ``time.sleep``; rate-limiting lives at the
+        agent layer (thread-pool size) not in the fetcher."""
         with respx.mock:
             respx.get("https://example.com/").mock(
                 return_value=httpx.Response(200, text=_SIMPLE_HTML)
             )
-            with patch("backend.scraper.fetcher.time.sleep") as mock_sleep, \
-                 patch("backend.scraper.fetcher.settings") as mock_settings:
-                mock_settings.rate_limit_delay = 2.5
-                mock_settings.request_timeout = 30.0
+            with patch("time.sleep") as mock_sleep:
                 fetch_url("https://example.com/")
 
-        mock_sleep.assert_called_once_with(2.5)
+        mock_sleep.assert_not_called()
 
     def test_spa_triggers_playwright_fallback(self) -> None:
         """SPA HTML causes ``_fetch_with_playwright`` to be invoked."""
@@ -144,8 +140,7 @@ class TestFetchUrl:
             respx.get("https://spa-app.example.com/").mock(
                 return_value=httpx.Response(200, text=_SPA_HTML)
             )
-            with patch("time.sleep"), \
-                 patch("backend.scraper.fetcher._fetch_with_playwright",
+            with patch("backend.scraper.fetcher._fetch_with_playwright",
                        return_value=playwright_result) as mock_pw:
                 raw = fetch_url("https://spa-app.example.com/")
 

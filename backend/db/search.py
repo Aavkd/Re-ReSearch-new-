@@ -25,30 +25,58 @@ from backend.db.nodes import _row_to_node
 
 
 # ---------------------------------------------------------------------------
+# FTS5 helpers
+# ---------------------------------------------------------------------------
+
+import re as _re
+
+def _sanitize_fts_query(text: str) -> str:
+    """Convert a natural-language string into a safe FTS5 query expression.
+
+    FTS5 treats commas, apostrophes, hyphens, colons, quotes, and other
+    punctuation as query operators, which causes ``OperationalError: fts5:
+    syntax error`` when a raw sentence is used as the match term.
+
+    Strategy: extract individual word tokens (≥3 chars), wrap each in
+    double-quotes (FTS5 treats quoted strings as phrase literals), and join
+    them with spaces (implicit AND).  Returns ``"*"`` (match everything) if
+    no tokens survive so the call never hard-errors.
+    """
+    tokens = _re.findall(r"[A-Za-z0-9]{3,}", text)
+    # Deduplicate while preserving order.
+    seen: set[str] = set()
+    unique = [t for t in tokens if not (t.lower() in seen or seen.add(t.lower()))]  # type: ignore[func-returns-value]
+    if not unique:
+        return '"*"'
+    return " ".join(f'"{t}"' for t in unique)
+
+
+# ---------------------------------------------------------------------------
 # FTS5 keyword search
 # ---------------------------------------------------------------------------
 
 def fts_search(
-    conn: sqlite3.Connection, 
-    query: str, 
+    conn: sqlite3.Connection,
+    query: str,
     top_k: int = 10,
-    scope_ids: Optional[list[str]] = None
+    scope_ids: Optional[list[str]] = None,
 ) -> list[Node]:
     """Return up to *top_k* nodes whose indexed text matches *query*.
-    
+
     If scope_ids is provided, filter results to only those IDs.
     """
-    
+    fts_query = _sanitize_fts_query(query)
+
     scope_clause = ""
-    params = [query]
-    
+    params: list = [fts_query]
+
     if scope_ids:
         placeholders = ",".join("?" for _ in scope_ids)
         scope_clause = f"AND n.id IN ({placeholders})"
         params.extend(scope_ids)
-        
+
     params.append(top_k)
-    
+
     query_sql = f"""
         SELECT n.*
         FROM   nodes n
@@ -58,7 +86,7 @@ def fts_search(
         ORDER  BY bm25(nodes_fts)
         LIMIT  ?
     """
-    
+
     rows = conn.execute(query_sql, params).fetchall()
     return [_row_to_node(r) for r in rows]
 

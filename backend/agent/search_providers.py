@@ -1,9 +1,9 @@
 """Multi-provider web search abstraction with automatic failover.
 
 Provider priority (highest to lowest):
-  1. SearXNG  — free metasearch, rotates multiple public instances, no API key.
-  2. DuckDuckGo — free, scraping-based; retried with exponential backoff.
-  3. Brave Search — free-tier API; skipped if no BRAVE_API_KEY configured.
+  1. Brave Search — fast REST API, deterministic; requires BRAVE_API_KEY.
+  2. SearXNG  — free metasearch, rotates multiple public instances.
+  3. DuckDuckGo — free, scraping-based; retried with exponential backoff.
 
 All providers share a common interface: ``search(query, max_results) -> list[str]``.
 The ``SearchProviderChain`` tries each provider in order and returns the first
@@ -68,6 +68,53 @@ class SearchProvider(ABC):
 
 
 # ---------------------------------------------------------------------------
+# Brave Search provider (preferred — deterministic, fast REST API)
+# ---------------------------------------------------------------------------
+
+class BraveSearchProvider(SearchProvider):
+    """Brave Search REST API (free tier: 2 000 queries/month).
+
+    Skipped if ``settings.brave_api_key`` is empty.
+    """
+
+    @property
+    def name(self) -> str:
+        return "Brave"
+
+    def search(self, query: str, max_results: int = 5) -> list[str]:
+        api_key = settings.brave_api_key
+        if not api_key:
+            return []
+
+        query = _normalise_query(query)
+        try:
+            with httpx.Client(timeout=settings.search_provider_timeout) as client:
+                resp = client.get(
+                    "https://api.search.brave.com/res/v1/web/search",
+                    params={"q": query, "count": max_results},
+                    headers={
+                        "Accept": "application/json",
+                        "Accept-Encoding": "gzip",
+                        "X-Subscription-Token": api_key,
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+        except Exception as exc:
+            print(f"[Brave] request failed: {exc}")
+            return []
+
+        results = [
+            item["url"]
+            for item in data.get("web", {}).get("results", [])
+            if item.get("url")
+        ]
+        if results:
+            print(f"[Brave] ✓ {len(results)} result(s).")
+        return results
+
+
+# ---------------------------------------------------------------------------
 # SearXNG provider
 # ---------------------------------------------------------------------------
 
@@ -75,8 +122,11 @@ class SearXNGProvider(SearchProvider):
     """Hit a SearXNG JSON endpoint.
 
     Tries the configured base URL first (`settings.searxng_base_url`), then
-    rotates through ``_SEARXNG_FALLBACK_INSTANCES`` on failure.  Uses a
-    browser-like User-Agent so instances that block bots will respond.
+    rotates through ``_SEARXNG_FALLBACK_INSTANCES`` on failure.
+
+    Each instance is queried with a tight ``searxng_instance_timeout`` (default
+    5 s) so dead or rate-limited instances fail fast rather than blocking for
+    the full ``search_provider_timeout``.
     """
 
     @property
@@ -121,8 +171,9 @@ class SearXNGProvider(SearchProvider):
             u for u in _SEARXNG_FALLBACK_INSTANCES if u.rstrip("/") != primary
         ]
 
+        # Use the shorter per-instance timeout so dead nodes fail fast.
         with httpx.Client(
-            timeout=settings.search_provider_timeout,
+            timeout=settings.searxng_instance_timeout,
             follow_redirects=True,
         ) as client:
             for base in instances:
@@ -163,7 +214,7 @@ class DuckDuckGoProvider(SearchProvider):
                 if urls:
                     print(f"[DuckDuckGo] ✓ {len(urls)} result(s).")
                 return urls
-            except RatelimitException as exc:
+            except RatelimitException:
                 if attempt < max_retries:
                     delay = base_delay * (2 ** attempt)
                     print(
@@ -195,53 +246,6 @@ class DuckDuckGoProvider(SearchProvider):
 
 
 # ---------------------------------------------------------------------------
-# Brave Search provider
-# ---------------------------------------------------------------------------
-
-class BraveSearchProvider(SearchProvider):
-    """Brave Search REST API (free tier: 2 000 queries/month).
-
-    Skipped if ``settings.brave_api_key`` is empty.
-    """
-
-    @property
-    def name(self) -> str:
-        return "Brave Search"
-
-    def search(self, query: str, max_results: int = 5) -> list[str]:
-        api_key = settings.brave_api_key
-        if not api_key:
-            return []
-
-        query = _normalise_query(query)
-        try:
-            with httpx.Client(timeout=settings.search_provider_timeout) as client:
-                resp = client.get(
-                    "https://api.search.brave.com/res/v1/web/search",
-                    params={"q": query, "count": max_results},
-                    headers={
-                        "Accept": "application/json",
-                        "Accept-Encoding": "gzip",
-                        "X-Subscription-Token": api_key,
-                    },
-                )
-                resp.raise_for_status()
-                data = resp.json()
-        except Exception as exc:
-            print(f"[Brave] request failed: {exc}")
-            return []
-
-        results = [
-            item["url"]
-            for item in data.get("web", {}).get("results", [])
-            if item.get("url")
-        ]
-        if results:
-            print(f"[Brave] ✓ {len(results)} result(s).")
-        return results
-
-
-# ---------------------------------------------------------------------------
 # Provider chain
 # ---------------------------------------------------------------------------
 
@@ -265,11 +269,14 @@ class SearchProviderChain:
 # ---------------------------------------------------------------------------
 
 def build_default_chain() -> SearchProviderChain:
-    """SearXNG → DuckDuckGo → (Brave if key configured)."""
-    providers: list[SearchProvider] = [
-        SearXNGProvider(),
-        DuckDuckGoProvider(),
-    ]
+    """Brave (if key) → SearXNG → DuckDuckGo.
+
+    Brave leads because it is the fastest and most reliable.  SearXNG is tried
+    next with a short per-instance timeout.  DuckDuckGo is the last resort.
+    """
+    providers: list[SearchProvider] = []
     if settings.brave_api_key:
         providers.append(BraveSearchProvider())
+    providers.append(SearXNGProvider())
+    providers.append(DuckDuckGoProvider())
     return SearchProviderChain(providers)
