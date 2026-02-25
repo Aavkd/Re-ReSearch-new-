@@ -68,8 +68,9 @@ pytest tests/ -v --tb=short
 | 9 | ✅ Complete | `library` command group (add, list, search, recall) |
 | 10 | ✅ Complete | `map` command group (show, connect, cluster) |
 | 11 | ✅ Complete | `draft` command group (new, list, show, edit, attach) |
-| 12 | ❌ Not started | `agent` command group |
-| 13 | ❌ Not started | CLI restructure & cleanup |
+| 12 | ✅ Complete | `agent` command group |
+| 13 | ✅ Complete | CLI restructure & cleanup |
+| 14 | ✅ Complete | API hardening — CORS + `/projects` REST endpoints |
 
 ## CLI Commands
 
@@ -116,6 +117,14 @@ python cli/main.py draft edit <node_id>                   # opens $EDITOR
 python cli/main.py draft attach <artifact_id> <source_id>  # CITES edge
 ```
 
+### `agent` — delegated research
+
+```bash
+python cli/main.py agent hire --goal "Summarise solid-state battery progress"
+python cli/main.py agent hire --goal "..." --depth deep
+python cli/main.py agent status                           # list agent-produced reports
+```
+
 ## API Server
 
 Start the server:
@@ -141,3 +150,12 @@ Interactive docs: `http://localhost:8000/docs`
 | `POST` | `/ingest/url` | Body `{"url":"..."}` → scrape + ingest |
 | `POST` | `/ingest/pdf` | Multipart PDF → ingest |
 | `POST` | `/research` | Body `{"goal":"..."}` → SSE research stream |
+| `GET` | `/projects` | List all Project nodes |
+| `POST` | `/projects` | Create a new Project |
+| `GET` | `/projects/{id}` | Project summary (node/edge counts, recent artifacts) |
+| `GET` | `/projects/{id}/nodes` | All nodes in project (BFS depth, default 2) |
+| `GET` | `/projects/{id}/graph` | Subgraph (nodes + edges) for canvas rendering |
+| `POST` | `/projects/{id}/link` | Body `{"node_id":"...","relation":"..."}` → link node to project |
+| `GET` | `/projects/{id}/export` | Full subgraph as JSON |
+
+> **CORS:** The API accepts requests from any origin (`Access-Control-Allow-Origin: *`). Tighten `allow_origins` in `backend/api/app.py` before deploying to production.

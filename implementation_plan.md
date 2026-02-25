@@ -476,10 +476,11 @@ graph LR
     P10 --> P13
     P11 --> P13
     P12 --> P13
+    P13 --> P14["Phase 14: API & Frontend Prep"]
 ```
 
 > [!TIP]
-> Phases 6 and 7 are the foundation — they must be done first and in order. Phases 8–12 can be done **in parallel** since they only depend on 6 + 7. Phase 13 is the final integration pass.
+> Phases 6 and 7 are the foundation — they must be done first and in order. Phases 8–12 can be done **in parallel** since they only depend on 6 + 7. Phase 13 is the final integration pass. Phase 14 prepares the backend for a GUI frontend.
 
 ---
 
@@ -500,6 +501,9 @@ graph LR
 | `cli/rendering.py` | 10 | ✅ Done | ASCII tree renderer |
 | `backend/db/projects.py` | 7 | ✅ Done | Graph-scoping helpers |
 | `backend/rag/recall.py` | 9 | ✅ Done | RAG-based Q&A |
+| `backend/api/routers/projects.py` | 14 | ✅ Done | Project-scoped REST endpoints |
+| `docs/DOCS_FRONTEND_DESIGN.md` | 14 | ✅ Done | Frontend design specification |
+| `tests/test_api_projects.py` | 14 | ✅ Done | API project endpoint tests (22 tests) |
 | `tests/test_cli_context.py` | 6 | ✅ Done | Context layer tests |
 | `tests/test_projects.py` | 7 | ✅ Done | Graph scoping tests |
 | `tests/test_cli_project.py` | 8 | ✅ Done | Project command tests |
@@ -516,8 +520,9 @@ graph LR
 | `backend/db/search.py` | 9 | ✅ Done | `scope_ids` filter param added to all search functions |
 | `backend/agent/state.py` | 12 | ✅ Done | Added `artifact_id: str` field |
 | `backend/agent/runner.py` | 12 | ✅ Done | Returns `artifact_id` in final state |
-| `cli/main.py` | 13 | ❌ TODO | Replace old commands with new sub-apps |
-| `README.md` | 9/10 | ✅ Done | Updated CLI documentation with command groups |
+| `cli/main.py` | 13 | ✅ Done | New sub-apps mounted, old commands retired |
+| `README.md` | 9/10/14 | ✅ Done | Updated CLI docs + Phase 14 endpoints |
+| `backend/api/app.py` | 14 | ✅ Done | CORS middleware + projects router mounted |
 
 ---
 
@@ -525,7 +530,7 @@ graph LR
 
 ### Automated Tests
 
-The full suite currently has 171 collected tests; 167 pass. 4 pre-existing failures:
+The full suite currently has 193 collected tests; 189 pass. 4 pre-existing failures:
 - `TestFetchUrl` (4 tests in `test_scraper.py`) — `respx` mock setup issue pre-dating Phase 6; unrelated to CLI work.
 
 Run the full suite with:
@@ -544,6 +549,81 @@ After Phase 13, run the full user journey from the [CLI Restructure section](#ph
 The existing 114 backend tests (`test_db.py`, `test_scraper.py`, `test_rag.py`, `test_agent.py`) must continue to pass after all changes:
 ```bash
 pytest tests/test_db.py tests/test_scraper.py tests/test_rag.py tests/test_agent.py -v
+```
+
+---
+
+### Phase 14 — API Hardening & Frontend Preparation ✅ COMPLETE
+
+**Goal:** Audit and extend the FastAPI layer so a browser-based frontend can consume it without gaps. Write the frontend design spec before any UI code is written.
+
+**Dependencies:** Phase 13 (full CLI complete, all command groups wired).
+
+#### [MODIFY] `backend/api/app.py`
+
+Add CORS middleware so a browser frontend on any origin (dev: `localhost:3000`) can call the API:
+```python
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # tighten for production
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+#### [NEW] `backend/api/routers/projects.py`
+
+Project-scoped REST endpoints that the frontend needs but the current API lacks:
+
+| Method | Path | Action |
+|---|---|---|
+| `GET` | `/projects` | `list_projects(conn)` — returns all Project nodes |
+| `POST` | `/projects` | `create_project(conn, name)` — create and return new project |
+| `GET` | `/projects/{id}` | `get_project_summary(conn, id)` — count nodes/edges, list recent artifacts |
+| `GET` | `/projects/{id}/nodes` | `get_project_nodes(conn, id, depth)` — scoped node list |
+| `GET` | `/projects/{id}/graph` | nodes + edges subgraph for graph canvas rendering |
+| `POST` | `/projects/{id}/link` | Body `{node_id, relation}` → `link_to_project(conn, id, node_id, relation)` |
+| `GET` | `/projects/{id}/export` | `export_project(conn, id)` → JSON download |
+
+> [!NOTE]
+> Verify the `/research` SSE endpoint sends correct `Content-Type: text/event-stream` and that CORS headers propagate through the stream. Test from a browser `EventSource` before building the agent UI screen.
+
+#### [NEW] `docs/DOCS_FRONTEND_DESIGN.md`
+
+Frontend specification document covering:
+
+1. **Paradigm decision** — Web app (Vite + React) vs Desktop (Tauri + React) vs TUI (Textual). Recommended: **Vite + React** for fastest iteration; Tauri wrapper can be added later.
+2. **Full API surface audit** — list every endpoint the frontend calls, grouped by screen.
+3. **Screen map** — one section per screen:
+   - `ProjectSwitcher` sidebar — `GET /projects`, `POST /projects`
+   - `LibraryScreen` — `GET /projects/{id}/nodes`, `POST /ingest/url`, `GET /search`
+   - `MapScreen` — `GET /projects/{id}/graph`, graph canvas (e.g. React Flow)
+   - `DraftsScreen` — node list + inline markdown editor
+   - `AgentScreen` — goal input + live SSE stream from `POST /research`
+4. **State management** — active project ID stored in React context / Zustand; mirrors `context.json` in the CLI.
+5. **ASCII wireframes** — one per screen.
+
+#### [NEW] `tests/test_api_projects.py`
+
+| Test | Assertion |
+|---|---|
+| `test_list_projects` | Returns empty list on fresh DB |
+| `test_create_project` | Returns new project node with correct type |
+| `test_get_project_summary` | Returns node/edge counts |
+| `test_get_project_nodes` | Returns scoped nodes |
+| `test_get_project_graph` | Returns `nodes` and `edges` keys |
+| `test_link_node_to_project` | Edge created; node appears in subsequent `/nodes` call |
+| `test_cors_headers_present` | `Access-Control-Allow-Origin` in response headers |
+
+**Validation:**
+```bash
+pytest tests/test_api_projects.py -v
+
+# Manual check — CORS + SSE
+uvicorn backend.api.app:app --reload
+# Open browser console and run:
+# fetch('http://localhost:8000/projects').then(r => r.json()).then(console.log)
 ```
 
 ---
