@@ -132,6 +132,7 @@ def _run_graph(
                 node_type="Artifact",
                 metadata={
                     "goal": goal,
+                    "content_body": report_text,
                     "iterations": final.get("iteration", 0),
                     "sources_count": len(final.get("urls_scraped", [])),
                 },
