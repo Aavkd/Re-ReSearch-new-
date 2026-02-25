@@ -59,7 +59,8 @@ export function streamResearch(
     try {
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        // Exit immediately if the caller aborted — even if the read returned data
+        if (done || controller.signal.aborted) break;
 
         buffer += decoder.decode(value, { stream: true });
 

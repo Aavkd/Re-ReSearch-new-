@@ -27,14 +27,23 @@ Search/
 │   └── api/                 # Phase 5: FastAPI HTTP layer
 ├── cli/
 │   └── main.py              # Typer CLI entry-point
-├── frontend/                # React + Vite browser frontend (F0–F8)
+├── frontend/                # React + Vite browser frontend (F0–F9)
 │   ├── src/
-│   │   ├── api/             # axios API client (F1)
+│   │   ├── api/             # axios API client + SSE stream helper (F1)
 │   │   ├── types/           # Shared TypeScript types (F1)
 │   │   ├── stores/          # Zustand state (F2)
 │   │   ├── hooks/           # TanStack Query hooks (F2)
-│   │   ├── components/      # UI components (F3–F8)
-│   │   └── screens/         # Top-level screen components (F5–F8)
+│   │   ├── components/      # UI components (F3–F9)
+│   │   │   ├── layout/      # AppShell, NavBar, ErrorBoundary
+│   │   │   ├── sidebar/     # ProjectSwitcher, NewProjectModal
+│   │   │   ├── library/     # AddSourcePanel, SearchBar, NodeResultCard
+│   │   │   ├── map/         # GraphCanvas, NodeDetailPanel, custom nodes
+│   │   │   ├── drafts/      # DraftList, DraftEditor, NewDraftModal
+│   │   │   ├── agent/       # GoalForm, ProgressFeed, ReportPanel
+│   │   │   └── ui/          # Spinner, Badge, EmptyState
+│   │   ├── mocks/           # MSW handlers + Node server (F9)
+│   │   ├── screens/         # Top-level screen components (F5–F8)
+│   │   └── test-utils.tsx   # renderWithProviders helper (F9)
 │   ├── package.json
 │   └── vite.config.ts
 ├── tests/                   # pytest test suite
@@ -105,7 +114,8 @@ pytest tests/ -v --tb=short
 | F5 | ✅ Complete | `LibraryScreen` — URL/PDF ingest, debounced search, result cards |
 | F6 | ✅ Complete | `MapScreen` (React Flow graph canvas, dagre layout, node detail panel) |
 | F7 | ✅ Complete | `DraftsScreen` (CodeMirror Markdown editor, auto-save, project-scoped draft list) |
-| F8 | 🔲 Planned | `AgentScreen` (SSE progress + report) |
+| F8 | ✅ Complete | `AgentScreen` (SSE progress feed, report panel, live research streaming) |
+| F9 | ✅ Complete | Polish & hardening — `ErrorBoundary`, UI components (`Spinner`, `Badge`, `EmptyState`), MSW handlers, `renderWithProviders` test utility |
 
 ## CLI Commands
 

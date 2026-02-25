@@ -107,6 +107,28 @@ Build a browser-based React frontend for the Re:Search app inside a new `fronten
 
 ---
 
+## Implementation Notes (Phases F8 & F9 — completed Feb 2026)
+
+### F8 — Deviations from plan
+
+| Item | Plan | Actual |
+|---|---|---|
+| `GoalForm` state | Uncontrolled `<textarea>` (value read from `elements.namedItem`) | Controlled state via `useState` — required so the "Run Research" button can be disabled reactively when the textarea is empty. Radio inputs also use controlled `checked` / `onChange`. |
+| `onEvent` handling of `done` | `AgentScreen` handles `done` in separate `onDone` callback only | `streamResearch` calls `onEvent` for every event type including `done` and `error`. `AgentScreen.onEvent` branches on `e.event === "done"` to extract `report` and `artifact_id` before `onDone()` sets `isRunning = false`. |
+| `abort` guard in stream loop | Not in original plan | Added `controller.signal.aborted` check after each `reader.read()` call in `api/agent.ts`. This is required because jsdom's `ReadableStream` does not propagate `AbortController` signals to pending reads — the check ensures data enqueued after `abort()` is never dispatched to callbacks. |
+| `streamResearch` test for abort | "After abort, no further callbacks" | Tested by calling `abort()` synchronously before enqueuing stream data, then confirming zero callback invocations with `vi.fn()`. Works because `agent.ts` now checks `controller.signal.aborted` after each read. |
+
+### F9 — Deviations from plan
+
+| Item | Plan | Actual |
+|---|---|---|
+| ErrorBoundary per screen | "Wrap each screen in `<ErrorBoundary>` inside AppShell" | Boundaries are applied in `App.tsx` at the `<Route element={...}>` level, wrapping each screen's JSX directly. `AppShell` is not modified — this avoids re-rendering the sidebar when only one screen throws. |
+| `BombComponent` return type | Not specified | TypeScript requires JSX components to return `ReactElement`. `BombComponent` (test helper) is annotated `: ReactElement` even though it always throws — this satisfies the type checker without needing any runtime change. |
+| `src/test-utils.tsx` | F9 deliverable | Created with `renderWithProviders` that wraps in `QueryClientProvider` + `MemoryRouter` and resets Zustand store. Not yet used by existing tests (they each inline their own setup) but available for future tests. |
+| MSW `handlers.ts` SSE mock | `ReadableStream` via `HttpResponse` | Uses `new HttpResponse(stream, { headers: { "Content-Type": "text/event-stream" } })` to return a streaming `done` event. Compatible with MSW 2.x. |
+
+---
+
 ```
 frontend/
 ├── index.html
