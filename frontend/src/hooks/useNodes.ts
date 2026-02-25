@@ -41,24 +41,36 @@ export function useCreateNode() {
   });
 }
 
-/** Mutation to update a node.  Invalidates the specific node query. */
+/** Mutation to update a node.  Invalidates the specific node query + project graph so
+ *  title changes propagate to DraftList and GraphCanvas without a manual refresh. */
 export function useUpdateNode() {
   const queryClient = useQueryClient();
+  const activeProjectId = useProjectStore((s) => s.activeProjectId);
   return useMutation<AppNode, Error, { id: string; payload: Partial<AppNode> }>({
     mutationFn: ({ id, payload }) => updateNode(id, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["node", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["nodes"] });
+      if (activeProjectId) {
+        queryClient.invalidateQueries({ queryKey: ["projectGraph", activeProjectId] });
+        queryClient.invalidateQueries({ queryKey: ["projectNodes", activeProjectId] });
+      }
     },
   });
 }
 
-/** Mutation to delete a node.  Invalidates the node list. */
+/** Mutation to delete a node.  Invalidates the node list + project graph. */
 export function useDeleteNode() {
   const queryClient = useQueryClient();
+  const activeProjectId = useProjectStore((s) => s.activeProjectId);
   return useMutation<void, Error, string>({
     mutationFn: (id) => deleteNode(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["nodes"] });
+      if (activeProjectId) {
+        queryClient.invalidateQueries({ queryKey: ["projectGraph", activeProjectId] });
+        queryClient.invalidateQueries({ queryKey: ["projectNodes", activeProjectId] });
+      }
     },
   });
 }

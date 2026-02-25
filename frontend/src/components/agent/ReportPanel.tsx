@@ -34,7 +34,7 @@ export function ReportPanel({ report, artifactId }: ReportPanelProps) {
         <div className="flex items-center gap-2">
           {artifactId && (
             <Link
-              to="/map"
+              to={`/map?node=${artifactId}`}
               data-testid="view-in-map-link"
               className="text-sm text-blue-600 hover:underline"
             >

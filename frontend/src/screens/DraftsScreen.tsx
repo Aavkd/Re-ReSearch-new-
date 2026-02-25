@@ -30,9 +30,9 @@ export function DraftsScreen() {
     }
   }, [urlNode]);
 
-  const handleSave = (content: string) => {
+  const handleSave = async (content: string) => {
     if (!selectedNode) return;
-    updateNode.mutate({
+    await updateNode.mutateAsync({
       id: selectedNode.id,
       payload: {
         metadata: { ...selectedNode.metadata, content_body: content },

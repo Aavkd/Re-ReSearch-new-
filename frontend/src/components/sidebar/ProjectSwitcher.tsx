@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useProjectList } from "../../hooks/useProjects";
 import { useProjectStore } from "../../stores/projectStore";
 import { exportProject } from "../../api/projects";
@@ -17,11 +17,24 @@ import { NewProjectModal } from "./NewProjectModal";
 export function ProjectSwitcher() {
   const [isOpen, setIsOpen] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { activeProjectId, activeProjectName, setActiveProject } =
     useProjectStore();
 
   const { data: projects, isLoading, isError, refetch } = useProjectList();
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [isOpen]);
 
   const handleExport = async () => {
     if (!activeProjectId) return;
@@ -38,7 +51,7 @@ export function ProjectSwitcher() {
   };
 
   return (
-    <div className="relative" data-testid="project-switcher">
+    <div className="relative" data-testid="project-switcher" ref={containerRef}>
       {/* ── Trigger row ─────────────────────────────────── */}
       <div className="flex items-center gap-1 p-2">
         <button
