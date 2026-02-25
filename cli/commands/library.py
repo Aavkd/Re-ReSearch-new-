@@ -9,6 +9,7 @@ from backend.db.search import hybrid_search, fts_search, vector_search
 from backend.rag.ingestor import ingest_url
 from backend.rag.pdf_ingestor import ingest_pdf
 from backend.rag.embedder import embed_text
+from backend.rag.recall import recall as rag_recall
 
 from cli.context import load_context, require_context
 
@@ -122,5 +123,27 @@ def library_search(
         for n in results:
             typer.echo(f" - [{n.node_type}] {n.title}")
             
+    finally:
+        conn.close()
+
+
+@library_app.command("recall")
+@require_context
+def library_recall(
+    question: str = typer.Argument(..., help="Natural-language question to answer."),
+    top_k: int = typer.Option(5, "--top-k", help="Number of chunks to retrieve."),
+) -> None:
+    """Answer a question using the project's knowledge base (RAG)."""
+    ctx = load_context()
+    conn = get_connection()
+    init_db(conn)
+
+    try:
+        typer.echo(f"🤔 Recalling: {question!r} …")
+        answer = rag_recall(conn, question, project_id=ctx.active_project_id, top_k=top_k)
+        typer.echo(answer)
+    except Exception as e:
+        typer.echo(f"❌ Error: {e}")
+        raise typer.Exit(code=1)
     finally:
         conn.close()

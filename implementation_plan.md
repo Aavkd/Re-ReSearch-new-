@@ -2,7 +2,7 @@
 
 ## Goal
 
-Transform the current flat CLI ([cli/main.py](file:///c:/Users/speee/.openclaw/workspace/Search/cli/main.py), 212 lines) into the **domain-oriented TUI** described in [DOCS_CLI_DESIGN.md](file:///c:/Users/speee/.openclaw/workspace/Search/docs/DOCS_CLI_DESIGN.md). The new CLI introduces 5 command groups (`project`, `library`, `map`, `draft`, `agent`), persistent state management, and graph-based project scoping — all wired to the existing backend (Phases 0–5 ✅).
+Transform the current flat CLI ([cli/main.py](file:///c:/Users/speee/.openclaw/workspace/Search/cli/main.py), 212 lines) into the **domain-oriented TUI** described in [DOCS_CLI_DESIGN.md](file:///c:/Users/speee/.openclaw/workspace/Search/docs/DOCS_CLI_DESIGN.md). The new CLI introduces 5 command groups (`project`, `library`, `map`, `draft`, `agent`), persistent state management, and graph-based project scoping — all wired to the existing backend (Phases 0–10 ✅).
 
 ### What Exists Today
 
@@ -16,8 +16,8 @@ Transform the current flat CLI ([cli/main.py](file:///c:/Users/speee/.openclaw/w
 | CLI context & state | ✅ Complete | `cli/context.py`, `backend/config.py` |
 | Graph-scoping helpers | ✅ Complete | `backend/db/projects.py` |
 | `project` command group | ✅ Complete | `cli/commands/project.py` |
-| `library` command group | ⚠️ Partial | `cli/commands/library.py` — `recall` command missing |
-| `map` command group | ⚠️ Partial | `cli/commands/map.py` — `cluster` command missing, no tests |
+| `library` command group | ✅ Complete | `cli/commands/library.py` |
+| `map` command group | ✅ Complete | `cli/commands/map.py`, `tests/test_cli_map.py` |
 | `draft` command group | ⚠️ Partial | `cli/commands/draft.py` — `attach` missing, `edit` has a bug |
 | `agent` command group | ❌ Not started | `cli/commands/agent.py` does not exist |
 | CLI wiring | ❌ Not started | `cli/main.py` — new command groups not mounted |
@@ -181,13 +181,13 @@ python cli/main.py project list
 
 ---
 
-### Phase 9 — `library` Command Group ⚠️ PARTIAL
+### Phase 9 — `library` Command Group ✅ COMPLETE
 
 **Goal:** Context-aware ingestion and search. All operations auto-link to the active project.
 
 **Dependencies:** Phase 7 (scoping helpers) + Phase 3 (RAG ingestor, already complete).
 
-**Status:** `library add`, `library list`, and `library search` are implemented. `library recall` and `backend/rag/recall.py` are not yet built. The `test_library_recall` test case is also missing.
+**Status:** All commands implemented. `backend/rag/recall.py` created. All planned tests passing.
 
 #### [DONE] `cli/commands/library.py`
 
@@ -197,29 +197,29 @@ Typer sub-app `library_app`:
 |---|---|---|---|
 | `library add <target>` | ✅ Done | `<url\|filepath>` | Detect URL vs file path. Call `ingest_url` or `ingest_pdf`. Then `link_to_project(conn, project_id, node.id, "HAS_SOURCE")` |
 | `library search "<query>"` | ✅ Done | `--mode fuzzy\|semantic\|hybrid`, `--global` | If `--global`: search all nodes. Else: restrict results to `get_project_nodes(conn, project_id)` |
-| `library recall "<question>"` | ❌ TODO | | RAG query scoped to active project. Retrieve top-k chunks, format prompt, call LLM, print answer with source citations |
+| `library recall "<question>"` | ✅ Done | `--top-k` | RAG query scoped to active project. Retrieve top-k chunks, format prompt, call LLM, print answer with source citations |
 | `library list` | ✅ Done | `--type Source\|Artifact\|...` | List nodes connected to the active project, optionally filtered by type |
 
 #### [DONE] `backend/db/search.py`
 
 The `scope_ids: list[str] | None` parameter (called `node_ids` in the plan) is already implemented on `fts_search`, `vector_search`, and `hybrid_search`. No further changes needed.
 
-#### [TODO] `backend/rag/recall.py`
+#### [DONE] `backend/rag/recall.py`
 
 RAG-based Q&A function:
-- `recall(conn, question: str, project_id: str | None = None) -> str`
-- Steps: (1) Get scoped node IDs via `get_project_nodes`, (2) Embed the question, (3) `hybrid_search` with node_ids filter, (4) format top-k chunks as LLM context, (5) call LLM with a "answer from sources" system prompt, (6) return formatted answer with source citations.
+- `recall(conn, question: str, project_id: str | None = None, top_k: int = 5) -> str`
+- Steps: (1) Get scoped node IDs via `get_project_nodes`, (2) Embed the question, (3) `hybrid_search` with node_ids filter, (4) format top-k chunks as LLM context, (5) call LLM with an "answer from sources" system prompt, (6) return formatted answer with source citations.
 
-#### [PARTIAL] `tests/test_cli_library.py`
+#### [DONE] `tests/test_cli_library.py`
 
 | Test | Status | Assertion |
 |---|---|---|
 | `test_library_add_url` | ✅ Done | Source node created and linked to project |
-| `test_library_add_pdf` | ❌ missing | PDF node created and linked to project |
+| `test_library_add_pdf` | ✅ Done | PDF node created and linked to project |
 | `test_library_search_scoped` | ✅ Done | Returns only nodes in active project |
-| `test_library_search_global` | ❌ missing | Returns nodes across all projects |
+| `test_library_search_global` | ✅ Done | Returns nodes across all projects |
 | `test_library_list` | ✅ Done | Lists project-scoped nodes |
-| `test_library_recall` | ❌ missing | Returns LLM answer (mocked) with citations |
+| `test_library_recall` | ✅ Done | Returns LLM answer (mocked) with citations |
 
 **Validation:**
 ```bash
@@ -227,20 +227,21 @@ pytest tests/test_cli_library.py -v
 
 # Manual smoke test (requires active project)
 python cli/main.py project new "Test Project"
-python cli/main.py library add --target "https://en.wikipedia.org/wiki/LangGraph"
-python cli/main.py library search --query "LangGraph" --mode fuzzy
+python cli/main.py library add "https://en.wikipedia.org/wiki/LangGraph"
+python cli/main.py library search "LangGraph" --mode fuzzy
 python cli/main.py library list
+python cli/main.py library recall "What is LangGraph?"
 ```
 
 ---
 
-### Phase 10 — `map` Command Group ⚠️ PARTIAL
+### Phase 10 — `map` Command Group ✅ COMPLETE
 
 **Goal:** Expose graph structure operations for the active project's "Crazy Board."
 
 **Dependencies:** Phase 7 (scoping helpers).
 
-**Status:** `map show` and `map connect` are implemented. `map cluster` is not yet built. `tests/test_cli_map.py` does not exist.
+**Status:** All commands implemented. `map show` supports `--format tree|list`. `map connect` validates project membership. `map cluster` added with `--apply` flag. `tests/test_cli_map.py` created with all 4 tests passing.
 
 #### [DONE] `cli/commands/map.py`
 
@@ -249,8 +250,8 @@ Typer sub-app `map_app`:
 | Command | Status | Args | Action |
 |---|---|---|---|
 | `map show` | ✅ Done | `--format tree\|list` | Fetch `get_project_nodes(conn, project_id)` + edges. Render as ASCII tree (nodes as branches, relations as labels) or flat list |
-| `map connect` | ✅ Done | `<node_a> <node_b> --label "<relation>"` | `connect_nodes(conn, node_a, node_b, relation)`. Validate both nodes belong to the project |
-| `map cluster` | ❌ TODO | | (Advanced) Call LLM with all project node titles/summaries, ask it to suggest thematic clusters and connections. Print proposed edges; optionally auto-apply with `--apply` flag |
+| `map connect` | ✅ Done | `<node_a> <node_b> --label "<relation>"` | `connect_nodes(conn, node_a, node_b, relation)`. Validates both nodes belong to the project |
+| `map cluster` | ✅ Done | `--apply` | Call LLM with all project node titles/summaries, ask it to suggest thematic clusters and connections. Print proposed edges; auto-apply with `--apply` flag |
 
 #### ASCII tree renderer (helper):
 
@@ -268,14 +269,14 @@ Utility for rendering a project graph as ASCII:
   └── [HAS_ARTIFACT] 📝 Report: State of SSBs
   ```
 
-#### [TODO] `tests/test_cli_map.py` — file does not exist yet
+#### [DONE] `tests/test_cli_map.py`
 
 | Test | Status | Assertion |
 |---|---|---|
-| `test_map_show_tree` | ❌ | Output contains project name and child nodes |
-| `test_map_show_list` | ❌ | Output contains flat list of nodes |
-| `test_map_connect` | ❌ | Edge created between two nodes |
-| `test_map_connect_invalid_node` | ❌ | Error when node not in project |
+| `test_map_show_tree` | ✅ | Output contains project name and child nodes |
+| `test_map_show_list` | ✅ | Output contains flat list of nodes |
+| `test_map_connect` | ✅ | Edge created between two nodes |
+| `test_map_connect_invalid_node` | ✅ | Error when node not in project |
 
 **Validation:**
 ```bash
@@ -294,7 +295,7 @@ python cli/main.py map connect <nodeA_id> <nodeB_id> --label "RELATED_TO"
 
 **Dependencies:** Phase 7 (project linking), Phase 1 (node CRUD).
 
-**Status:** `draft new`, `draft edit`, `draft list`, and `draft show` are implemented. `draft attach` is not yet built. There is a known bug in `draft edit` (see below).
+**Status:** `draft new`, `draft list`, and `draft show` are implemented. `draft attach` is not yet built. `draft edit` has a known bug. `test_draft_new` is currently failing due to the `draft edit` bug (see below). `test_draft_edit_roundtrip` and `test_draft_attach` are missing.
 
 > [!WARNING]
 > **Bug in `draft edit`:** After the editor closes, the command calls `update_node(conn, node.id)` with no keyword arguments. `update_node` raises `ValueError: No valid fields provided` because no fields are passed. Fix: change the call to `update_node(conn, node.id, updated_at=int(time.time()))`.
@@ -306,7 +307,7 @@ Typer sub-app `draft_app`:
 | Command | Status | Args | Action |
 |---|---|---|---|
 | `draft new "<Title>"` | ✅ | | Create an `Artifact` node, `link_to_project(conn, project_id, node.id, "HAS_ARTIFACT")` |
-| `draft edit <node_id>` | ⚠️ bug | | The "Edit Loop": (1) Fetch node's `content_path` or `metadata.content` from DB, (2) Write to temp `.md` file, (3) Open `$EDITOR` (from context preferences or `$EDITOR` env var), (4) Wait for exit, (5) Read file, (6) Update node `content_path` and `updated_at` |
+| `draft edit <node_id>` | ⚠️ bug | | The "Edit Loop": (1) Fetch node's `content_path` or `metadata.content` from DB, (2) Write to temp `.md` file, (3) Open `$EDITOR` (from context preferences or `$EDITOR` env var), (4) Wait for exit, (5) Read file, (6) Update node `content_path` and `updated_at`. **Currently fails: `update_node` called with no fields.** |
 | `draft list` | ✅ | | List artifacts linked to the active project |
 | `draft attach <node_id> <source_id>` | ❌ not built | | Create a `CITES` edge between an artifact and a source |
 | `draft show <node_id>` | ✅ | | Print the content of an artifact to stdout |
@@ -334,7 +335,7 @@ Decision: **Use `content_path`**. The `draft edit` flow writes to `~/.research_c
 
 | Test | Status | Assertion |
 |---|---|---|
-| `test_draft_new` | ✅ | Artifact node created and linked to project |
+| `test_draft_new` | ⚠️ failing | Artifact node created and linked to project — currently exits with code 1 (investigate in Phase 11) |
 | `test_draft_edit_roundtrip` | ❌ missing | Content written to temp file, read back correctly (mock `$EDITOR` with a no-op) |
 | `test_draft_list` | ✅ | Shows only artifacts in active project |
 | `test_draft_attach` | ❌ missing | `CITES` edge created |
@@ -495,19 +496,19 @@ graph LR
 | `cli/context.py` | 6 | ✅ Done | State management (`context.json` read/write) |
 | `cli/commands/__init__.py` | 13 | ✅ Done | Package init |
 | `cli/commands/project.py` | 8 | ✅ Done | `project` command group |
-| `cli/commands/library.py` | 9 | ⚠️ Partial | `library` command group — `recall` missing |
-| `cli/commands/map.py` | 10 | ⚠️ Partial | `map` command group — `cluster` missing |
+| `cli/commands/library.py` | 9 | ✅ Done | `library` command group |
+| `cli/commands/map.py` | 10 | ✅ Done | `map` command group |
 | `cli/commands/draft.py` | 11 | ⚠️ Partial | `draft` command group — `attach` missing, `edit` bug |
 | `cli/commands/agent.py` | 12 | ❌ TODO | `agent` command group |
 | `cli/editor.py` | 11 | ✅ Done | External editor integration |
 | `cli/rendering.py` | 10 | ✅ Done | ASCII tree renderer |
 | `backend/db/projects.py` | 7 | ✅ Done | Graph-scoping helpers |
-| `backend/rag/recall.py` | 9 | ❌ TODO | RAG-based Q&A |
+| `backend/rag/recall.py` | 9 | ✅ Done | RAG-based Q&A |
 | `tests/test_cli_context.py` | 6 | ✅ Done | Context layer tests |
 | `tests/test_projects.py` | 7 | ✅ Done | Graph scoping tests |
 | `tests/test_cli_project.py` | 8 | ✅ Done | Project command tests |
-| `tests/test_cli_library.py` | 9 | ⚠️ Partial | Library command tests — `recall` test missing |
-| `tests/test_cli_map.py` | 10 | ❌ TODO | Map command tests — file does not exist |
+| `tests/test_cli_library.py` | 9 | ✅ Done | Library command tests |
+| `tests/test_cli_map.py` | 10 | ✅ Done | Map command tests |
 | `tests/test_cli_draft.py` | 11 | ⚠️ Partial | Draft command tests — `attach` and `edit_roundtrip` missing |
 | `tests/test_cli_agent.py` | 12 | ❌ TODO | Agent command tests |
 
@@ -520,7 +521,7 @@ graph LR
 | `backend/agent/state.py` | 12 | ❌ TODO | Add `artifact_id` field |
 | `backend/agent/runner.py` | 12 | ❌ TODO | Surface `artifact_id` in return state |
 | `cli/main.py` | 13 | ❌ TODO | Replace old commands with new sub-apps |
-| `README.md` | 13 | ❌ TODO | Updated CLI documentation |
+| `README.md` | 9/10 | ✅ Done | Updated CLI documentation with command groups |
 
 ---
 
@@ -528,12 +529,16 @@ graph LR
 
 ### Automated Tests
 
-Every phase has a dedicated test file. Run the full suite with:
+The full suite currently has 164 collected tests; 159 pass. 5 pre-existing failures:
+- `test_draft_new` — exits with code 1; root cause to be investigated in Phase 11.
+- `TestFetchUrl` (4 tests in `test_scraper.py`) — `respx` mock setup issue pre-dating Phase 6; unrelated to CLI work.
+
+Run the full suite with:
 ```bash
 pytest tests/ -v --tb=short
 ```
 
-All tests mock external dependencies (LLM, Ollama, network). No test requires a running Ollama/OpenAI instance.
+All CLI tests mock external dependencies (LLM, Ollama, network). No test requires a running Ollama/OpenAI instance.
 
 ### Manual Smoke Tests
 

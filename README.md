@@ -62,6 +62,58 @@ pytest tests/ -v --tb=short
 | 3 | ✅ Complete | RAG ingestion pipeline |
 | 4 | ✅ Complete | LangGraph researcher agent |
 | 5 | ✅ Complete | FastAPI HTTP layer |
+| 6 | ✅ Complete | CLI state management (`cli/context.py`) |
+| 7 | ✅ Complete | Backend graph-scoping helpers (`backend/db/projects.py`) |
+| 8 | ✅ Complete | `project` command group |
+| 9 | ✅ Complete | `library` command group (add, list, search, recall) |
+| 10 | ✅ Complete | `map` command group (show, connect, cluster) |
+| 11 | ⚠️ Partial | `draft` command group (`attach` missing, `edit` bug) |
+| 12 | ❌ Not started | `agent` command group |
+| 13 | ❌ Not started | CLI restructure & cleanup |
+
+## CLI Commands
+
+> **Note:** the new command groups are wired in Phase 13. Until then, run them directly against their sub-apps during development.
+
+### `project` — workspace lifecycle
+
+```bash
+python cli/main.py project new "My Project"
+python cli/main.py project list
+python cli/main.py project switch "My Project"
+python cli/main.py project status
+python cli/main.py project export
+```
+
+### `library` — ingest and search sources
+
+```bash
+python cli/main.py library add "https://example.com/article"
+python cli/main.py library add "/path/to/paper.pdf"
+python cli/main.py library list
+python cli/main.py library search "solid-state batteries" --mode hybrid
+python cli/main.py library search "topic" --global        # search all projects
+python cli/main.py library recall "What are the main findings?"
+```
+
+### `map` — visualise and connect the knowledge graph
+
+```bash
+python cli/main.py map show                               # ASCII tree (default)
+python cli/main.py map show --format list                 # flat list
+python cli/main.py map connect <node_a_id> <node_b_id> --label CITES
+python cli/main.py map cluster                            # LLM-suggested edges
+python cli/main.py map cluster --apply                    # auto-create edges
+```
+
+### `draft` — create and edit artifact documents
+
+```bash
+python cli/main.py draft new "Chapter 1"
+python cli/main.py draft list
+python cli/main.py draft show <node_id>
+python cli/main.py draft edit <node_id>                   # opens $EDITOR
+```
 
 ## API Server
 
