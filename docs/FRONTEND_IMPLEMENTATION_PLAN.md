@@ -62,7 +62,26 @@ Build a browser-based React frontend for the Re:Search app inside a new `fronten
 
 ---
 
-## Directory Structure (target state)
+## Implementation Notes (Phases F4 & F5 — completed Feb 2026)
+
+### F4 — Deviations from plan
+
+| Item | Plan | Actual |
+|---|---|---|
+| `AppShell` placeholder slot | `data-testid="project-switcher-slot"` removed | The wrapper `<div data-testid="project-switcher-slot">` is retained around `<ProjectSwitcher />` so the existing AppShell test continues to pass. |
+| `useProjectSummary` not used in `ProjectSwitcher` | Not specified | `ProjectSwitcher` only needs the flat list from `useProjectList`; summary stats are not needed for the switcher UI. |
+| `URL.createObjectURL` in export | Standard browser API | jsdom does not implement `URL.createObjectURL`; the export test assigns it as a `vi.fn()` mock directly on the `URL` global before asserting. |
+
+### F5 — Deviations from plan
+
+| Item | Plan | Actual |
+|---|---|---|
+| `useProjectNodes` hook | Not listed in F2 hooks | Added to `hooks/useProjects.ts` so `LibraryScreen` can load project-scoped nodes without a new file. |
+| Debounce test strategy | "Only one query fired after 300 ms" using fake timers | `vi.useFakeTimers()` blocks MSW response resolution in vitest 3.x. Tests use real timers: three rapid `fireEvent.change` calls are fired synchronously, then `waitFor` (2 s timeout) verifies only one search request was made — which holds because the debounce fires once after the last change. |
+| `SearchBar` debounce implementation | `useDebounce` hook or utils file | Debounce is implemented inline in `SearchBar.tsx` via `useEffect` + `useRef` for a stable `onChange` reference. No separate utility file is needed. |
+| Search result scoping | Server-side project filter param | `GET /search` has no `project_id` param. `LibraryScreen` fetches `GET /projects/{id}/nodes` for the empty-query list and filters search results client-side by the project's node id set. Tracked by a `// TODO` comment. |
+
+---
 
 ```
 frontend/

@@ -7,6 +7,7 @@ import {
   fetchProjects,
   createProject,
   fetchProjectSummary,
+  fetchProjectNodes,
 } from "../api/projects";
 import type { AppNode, ProjectSummary } from "../types";
 
@@ -39,5 +40,19 @@ export function useProjectSummary(id: string | null) {
     queryKey: ["project", id],
     queryFn: () => fetchProjectSummary(id!),
     enabled: !!id,
+  });
+}
+
+/**
+ * All nodes that belong to a project (up to depth=2).
+ * Used by LibraryScreen to show/filter project-scoped results.
+ * Only fetches when `id` is non-null / non-empty.
+ */
+export function useProjectNodes(id: string | null) {
+  return useQuery<AppNode[]>({
+    queryKey: ["projectNodes", id],
+    queryFn: () => fetchProjectNodes(id!),
+    enabled: !!id,
+    staleTime: 30_000,
   });
 }

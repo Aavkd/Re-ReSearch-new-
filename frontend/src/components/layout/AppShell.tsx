@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import { NavBar } from "./NavBar";
+import { ProjectSwitcher } from "../sidebar/ProjectSwitcher";
 
 /**
  * Two-column application shell.
@@ -11,21 +12,18 @@ import { NavBar } from "./NavBar";
  * └──────────────────────────────────────────────────────┘
  *
  * The sidebar and main content area each scroll independently.
- * ProjectSwitcher is imported lazily here as a placeholder comment so the
- * slot is clearly visible; it will be swapped for the real component in F4.
  */
 export function AppShell() {
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
       {/* ── Sidebar ───────────────────────────────────────── */}
       <aside className="flex w-64 flex-shrink-0 flex-col overflow-y-auto border-r border-gray-200 bg-white">
-        {/* Project switcher slot — implemented in Phase F4 */}
+        {/* Project switcher — implemented in Phase F4 */}
         <div
-          className="border-b border-gray-200 px-4 py-3 text-xs text-gray-400"
+          className="border-b border-gray-200"
           data-testid="project-switcher-slot"
         >
-          {/* <ProjectSwitcher /> */}
-          Project switcher (F4)
+          <ProjectSwitcher />
         </div>
 
         {/* Navigation */}

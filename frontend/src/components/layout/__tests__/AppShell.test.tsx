@@ -60,6 +60,6 @@ describe("AppShell", () => {
 
   it("renders the outlet content for the active route", () => {
     renderShell("/library");
-    expect(screen.getByText("LibraryScreen placeholder")).toBeTruthy();
+    expect(screen.getByTestId("library-screen")).toBeTruthy();
   });
 });

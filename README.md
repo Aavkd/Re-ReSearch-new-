@@ -101,8 +101,8 @@ pytest tests/ -v --tb=short
 | F1 | ✅ Complete | TypeScript types, axios API client, SSE agent helper, unit tests |
 | F2 | ✅ Complete | Zustand project store, TanStack Query hooks |
 | F3 | ✅ Complete | App shell, sidebar, routing skeleton |
-| F4 | 🔲 Planned | `ProjectSwitcher` component |
-| F5 | 🔲 Planned | `LibraryScreen` (ingest + search) |
+| F4 | ✅ Complete | `ProjectSwitcher` + `NewProjectModal` (dropdown, create, export) |
+| F5 | ✅ Complete | `LibraryScreen` — URL/PDF ingest, debounced search, result cards |
 | F6 | 🔲 Planned | `MapScreen` (React Flow graph canvas) |
 | F7 | 🔲 Planned | `DraftsScreen` (CodeMirror Markdown editor) |
 | F8 | 🔲 Planned | `AgentScreen` (SSE progress + report) |
