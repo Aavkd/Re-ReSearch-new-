@@ -24,6 +24,7 @@ function renderShell(initialEntry = "/library") {
             <Route path="map" element={<div>MapScreen placeholder</div>} />
             <Route path="drafts" element={<div>DraftsScreen placeholder</div>} />
             <Route path="agent" element={<div>AgentScreen placeholder</div>} />
+            <Route path="chat" element={<div>ChatScreen placeholder</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -43,6 +44,11 @@ describe("AppShell", () => {
     expect(screen.getByRole("link", { name: /map/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /drafts/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /agent/i })).toBeTruthy();
+  });
+
+  it("renders Chat nav link", () => {
+    renderShell();
+    expect(screen.getByRole("link", { name: /chat/i })).toBeTruthy();
   });
 
   it("applies active class to the Library link when at /library", () => {

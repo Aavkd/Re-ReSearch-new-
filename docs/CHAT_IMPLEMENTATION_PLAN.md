@@ -780,8 +780,8 @@ npm run test           # all tests pass
 [x] F-C4  hooks/useChat.ts (useConversationList, useCreateConversation, useDeleteConversation)
 [x] F-C5  components/chat/* + component tests
 [x] F-C6  screens/ChatScreen.tsx + screen tests
-[ ] F-C7  App.tsx route + NavBar link + AppShell test update
-[ ] F-C8  Polish: aria, MSW stubs, animation throttle, conversation title edit
+[x] F-C7  App.tsx route + NavBar link + AppShell test update
+[x] F-C8  Polish: aria, MSW stubs, animation throttle, conversation title edit
 ```
 
 ### F-C5 implementation notes
@@ -811,3 +811,18 @@ npm run test           # all tests pass
   calls; return values are configured via `vi.mocked(...).mockResolvedValue()` in
   `beforeEach`.
 
+### F-C7 implementation notes
+
+- The `/chat` route is inserted after `/agent` in `App.tsx`; `ChatScreen` is wrapped in the existing `<ErrorBoundary>` component.
+- The Chat nav link uses the `MessageSquare` icon from `lucide-react` (already imported in `ConversationList`).  It is appended as the fifth entry in the `LINKS` constant, placing it after **Agent** and before the pinned **Settings** link.
+- The `AppShell.test.tsx` diff: a `/chat` route placeholder is added to `renderShell()` and one new test — `renders Chat nav link` — asserts a link with text matching `/chat/i` is present.
+
+### F-C8 implementation notes
+
+- **`aria-label` on `ChatInput` textarea** — already present from F-C5 (`aria-label="Chat message input"`); no further change needed.
+- **`role="log"` + `aria-live="polite"`** on the message list — already present in `ChatScreen` from F-C6.
+- **Error boundary** — handled by F-C7 wrapping `<ChatScreen>` in `<ErrorBoundary>`; the existing boundary catches render-time errors.
+- **MSW stubs** — five handlers added to `frontend/src/mocks/handlers.ts`: `GET/POST /projects/:id/chat`, `GET /projects/:id/chat/:convId`, `POST .../messages` (SSE stub returning a token + citation + done frame), and `DELETE .../chat/:convId`.  A `CONVERSATION` fixture was added alongside the existing `PROJECT` and `SOURCE_NODE` fixtures.
+- **RAF throttle** — `appendStreamingContent` in `chatStore.ts` now uses a module-level boolean `_rafPending` + `_pendingText` accumulator to batch token flushes per animation frame.  `resetStreamingContent` clears `_pendingText` synchronously so any in-flight RAF fires as a safe no-op.  A synchronous `requestAnimationFrame` stub was added to `src/test-setup.ts` so existing store tests continue to observe immediate state updates.
+- **Conversation title editing** — `ConversationList.tsx` gained `editingConvId` / `editingTitle` local state.  Double-clicking the title span enters inline edit mode (an `<input>` with `autoFocus`).  On Enter or blur the new title is persisted via `useUpdateNode().mutate({ id, payload: { title } })` and the conversation list is invalidated.  Escape cancels without saving.
+- **Arrow-key navigation** — a `handleListKeyDown` on the `<ul>` intercepts `ArrowDown`/`ArrowUp`; it queries all `button[data-conv-btn]` elements and moves `focus()` to the next/previous item (wrapping at boundaries).

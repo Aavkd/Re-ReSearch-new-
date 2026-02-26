@@ -40,6 +40,17 @@ const ARTIFACT_NODE = {
   updated_at: 1700000001,
 };
 
+const CONVERSATION = {
+  id: "conv-default",
+  title: "Default Conversation",
+  messages: [
+    { role: "user",      content: "Hello",       ts: 1700000010 },
+    { role: "assistant", content: "Hi there!",   ts: 1700000011 },
+  ],
+  created_at: 1700000010,
+  updated_at: 1700000011,
+};
+
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
 export const handlers = [
@@ -118,6 +129,45 @@ export const handlers = [
     return HttpResponse.json({ ...ARTIFACT_NODE, id: params.id, ...body });
   }),
   http.delete(`${BASE}/nodes/:id`, () =>
+    new HttpResponse(null, { status: 204 })
+  ),
+
+  // Chat — conversation CRUD + SSE message stream
+  http.get(`${BASE}/projects/:id/chat`, () =>
+    HttpResponse.json([CONVERSATION])
+  ),
+  http.post(`${BASE}/projects/:id/chat`, async ({ request }) => {
+    const body = await request.json() as { title?: string };
+    return HttpResponse.json(
+      { ...CONVERSATION, id: "conv-new", title: body.title ?? "New conversation", messages: [] },
+      { status: 201 }
+    );
+  }),
+  http.get(`${BASE}/projects/:id/chat/:convId`, ({ params }) =>
+    HttpResponse.json({ ...CONVERSATION, id: params.convId as string })
+  ),
+  http.post(`${BASE}/projects/:id/chat/:convId/messages`, () => {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          encoder.encode('data: {"event":"token","text":"Hello from stub"}\n\n')
+        );
+        controller.enqueue(
+          encoder.encode(
+            'data: {"event":"citation","nodes":[{"id":"node-src-default","title":"Example Source","url":"https://example.com"}]}\n\n'
+          )
+        );
+        controller.enqueue(encoder.encode('data: {"event":"done"}\n\n'));
+        controller.close();
+      },
+    });
+    return new HttpResponse(stream, {
+      status: 200,
+      headers: { "Content-Type": "text/event-stream" },
+    });
+  }),
+  http.delete(`${BASE}/projects/:id/chat/:convId`, () =>
     new HttpResponse(null, { status: 204 })
   ),
 

@@ -8,6 +8,7 @@ import { LibraryScreen } from "./screens/LibraryScreen";
 import { MapScreen } from "./screens/MapScreen";
 import { DraftsScreen } from "./screens/DraftsScreen";
 import { AgentScreen } from "./screens/AgentScreen";
+import { ChatScreen } from "./screens/ChatScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { useTheme } from "./hooks/useTheme";
 
@@ -58,6 +59,14 @@ function App() {
               element={
                 <ErrorBoundary>
                   <AgentScreen />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="chat"
+              element={
+                <ErrorBoundary>
+                  <ChatScreen />
                 </ErrorBoundary>
               }
             />

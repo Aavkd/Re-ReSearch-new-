@@ -1,11 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { BookOpen, Network, FileText, Bot, Settings } from "lucide-react";
+import { BookOpen, Network, FileText, Bot, MessageSquare, Settings } from "lucide-react";
 
 const LINKS = [
-  { label: "Library",  to: "/library",  Icon: BookOpen  },
-  { label: "Map",      to: "/map",      Icon: Network   },
-  { label: "Drafts",   to: "/drafts",   Icon: FileText  },
-  { label: "Agent",    to: "/agent",    Icon: Bot       },
+  { label: "Library",  to: "/library",  Icon: BookOpen      },
+  { label: "Map",      to: "/map",      Icon: Network       },
+  { label: "Drafts",   to: "/drafts",   Icon: FileText      },
+  { label: "Agent",    to: "/agent",    Icon: Bot           },
+  { label: "Chat",     to: "/chat",     Icon: MessageSquare },
 ] as const;
 
 /**

@@ -33,6 +33,15 @@ interface ChatStore {
   setCitations: (c: Citation[]) => void;
 }
 
+// ── RAF-throttle helpers for appendStreamingContent ─────────────────────────
+// Token chunks arrive very rapidly from fast models.  Batching them per
+// animation frame prevents excessive React re-renders without losing any text.
+// We track "is a flush scheduled?" with a boolean rather than the RAF handle so
+// the assignment `_rafPending = true` happens before the synchronous RAF stub
+// used in tests fires the callback (avoiding a stale `_rafHandle = 0` problem).
+let _rafPending = false;
+let _pendingText = "";
+
 /**
  * Zustand store for the active chat conversation and in-memory streaming state.
  *
@@ -55,9 +64,25 @@ export const useChatStore = create<ChatStore>()(
       setIsStreaming: (v) => set({ isStreaming: v }),
 
       streamingContent: "",
-      appendStreamingContent: (text) =>
-        set((state) => ({ streamingContent: state.streamingContent + text })),
-      resetStreamingContent: () => set({ streamingContent: "" }),
+      appendStreamingContent: (text) => {
+        // Accumulate tokens and flush at most once per animation frame
+        _pendingText += text;
+        if (!_rafPending) {
+          _rafPending = true;
+          requestAnimationFrame(() => {
+            _rafPending = false;
+            const flush = _pendingText;
+            _pendingText = "";
+            set((state) => ({ streamingContent: state.streamingContent + flush }));
+          });
+        }
+      },
+      resetStreamingContent: () => {
+        // Clear the pending buffer so any in-flight RAF fires as a safe no-op
+        _rafPending = false;
+        _pendingText = "";
+        set({ streamingContent: "" });
+      },
 
       citations: [],
       setCitations: (c) => set({ citations: c }),
