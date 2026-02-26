@@ -426,11 +426,17 @@ npm run test src/stores/__tests__/chatStore.test.ts
 
 **Goal:** Wrap the chat API functions in React Query for server-state management.
 
-### Files to Modify
+### Files to Create
 
-#### `frontend/src/hooks/useProjects.ts`
+#### `frontend/src/hooks/useChat.ts`
 
-Add the following hooks (keeping them co-located with other project-scoped hooks):
+**Implementation note:** The chat hooks were placed in a dedicated `useChat.ts`
+(not appended to `useProjects.ts`) because chat concerns are orthogonal to project
+CRUD. `useProjects.ts` was 60 lines; even at ~100 lines it would mix unrelated
+domains. This follows the same separation already established between
+`api/projects.ts` and `api/chat.ts`.
+
+Hooks in `useChat.ts`:
 
 ```typescript
 // List conversations for the active project
@@ -438,16 +444,20 @@ export function useConversationList(projectId: string | null)
 
 // Create a new conversation
 export function useCreateConversation()
+  // mutationFn takes { projectId, title? }
   // On success: invalidate ['conversations', projectId]
 
 // Delete a conversation
 export function useDeleteConversation()
+  // mutationFn takes { projectId, convId }
   // On success: invalidate ['conversations', projectId]
   // If deleted conv was active, call chatStore.setActiveConv(null)
 ```
 
-Alternatively, these can live in a new dedicated `frontend/src/hooks/useChat.ts`
-if the file grows large — the implementor should judge by line count.
+**Query key helpers** (exported from the same file):
+```typescript
+export const conversationKeys = { list, detail }
+```
 
 **Query key convention:**
 - `['conversations', projectId]` — list
@@ -729,6 +739,8 @@ npm run test           # all tests pass
 | `frontend/src/api/__tests__/chat.test.ts` | F-C2 |
 | `frontend/src/stores/chatStore.ts` | F-C3 |
 | `frontend/src/stores/__tests__/chatStore.test.ts` | F-C3 |
+| `frontend/src/hooks/useChat.ts` | F-C4 |
+| `frontend/src/hooks/__tests__/useChat.test.tsx` | F-C4 |
 | `frontend/src/components/chat/MessageBubble.tsx` | F-C5 |
 | `frontend/src/components/chat/CitationList.tsx` | F-C5 |
 | `frontend/src/components/chat/ConversationList.tsx` | F-C5 |
@@ -747,7 +759,7 @@ npm run test           # all tests pass
 | `backend/api/app.py` | B-C4 | Mount chat router; bump version to 0.3.0 |
 | `README.md` | B-C4 | Document new endpoints |
 | `frontend/src/types/index.ts` | F-C1 | Add chat-related interfaces |
-| `frontend/src/hooks/useProjects.ts` | F-C4 | Add conversation list/create/delete hooks |
+| ~~`frontend/src/hooks/useProjects.ts`~~ | F-C4 | Not modified — hooks placed in `useChat.ts` instead (see F-C4 note) |
 | `frontend/src/App.tsx` | F-C7 | Add `/chat` route |
 | `frontend/src/components/layout/NavBar.tsx` | F-C7 | Add Chat nav link |
 | `frontend/src/components/layout/__tests__/AppShell.test.tsx` | F-C7 | Assert Chat link present |
@@ -764,8 +776,8 @@ npm run test           # all tests pass
 [x] B-C4  app.py mount + README update
 [x] F-C1  types/index.ts  (can overlap with B-C1..B-C4)
 [x] F-C2  api/chat.ts + tests
-[ ] F-C3  stores/chatStore.ts + tests
-[ ] F-C4  hooks (useConversationList, useCreateConversation, useDeleteConversation)
+[x] F-C3  stores/chatStore.ts + tests
+[x] F-C4  hooks/useChat.ts (useConversationList, useCreateConversation, useDeleteConversation)
 [ ] F-C5  components/chat/* + component tests
 [ ] F-C6  screens/ChatScreen.tsx + screen tests
 [ ] F-C7  App.tsx route + NavBar link + AppShell test update
