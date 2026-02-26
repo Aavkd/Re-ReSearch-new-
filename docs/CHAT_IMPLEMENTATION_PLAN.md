@@ -281,8 +281,8 @@ export interface ChatConversation {
   id: string;
   title: string;
   messages: ChatMessage[];
-  created_at: string;
-  updated_at: string;
+  created_at: number; // Unix epoch — matches backend int and existing type convention
+  updated_at: number; // Unix epoch — matches backend int and existing type convention
 }
 
 export interface ChatTokenEvent {
@@ -762,8 +762,8 @@ npm run test           # all tests pass
 [x] B-C2  backend/rag/chat.py + tests/test_chat_rag.py
 [x] B-C3  backend/api/routers/chat.py + tests/test_api_chat.py
 [x] B-C4  app.py mount + README update
-[ ] F-C1  types/index.ts  (can overlap with B-C1..B-C4)
-[ ] F-C2  api/chat.ts + tests
+[x] F-C1  types/index.ts  (can overlap with B-C1..B-C4)
+[x] F-C2  api/chat.ts + tests
 [ ] F-C3  stores/chatStore.ts + tests
 [ ] F-C4  hooks (useConversationList, useCreateConversation, useDeleteConversation)
 [ ] F-C5  components/chat/* + component tests

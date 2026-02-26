@@ -104,3 +104,46 @@ export interface SseErrorEvent {
 }
 
 export type SseEvent = SseNodeEvent | SseDoneEvent | SseErrorEvent;
+
+// ---------------------------------------------------------------------------
+// Chat
+// ---------------------------------------------------------------------------
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  ts: number; // Unix timestamp
+}
+
+export interface ChatConversation {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  created_at: number;
+  updated_at: number;
+}
+
+export interface ChatTokenEvent {
+  event: "token";
+  text: string;
+}
+
+export interface ChatCitationEvent {
+  event: "citation";
+  nodes: Array<{ id: string; title: string; url?: string }>;
+}
+
+export interface ChatDoneEvent {
+  event: "done";
+}
+
+export interface ChatErrorEvent {
+  event: "error";
+  detail: string;
+}
+
+export type ChatSseEvent =
+  | ChatTokenEvent
+  | ChatCitationEvent
+  | ChatDoneEvent
+  | ChatErrorEvent;
