@@ -101,6 +101,10 @@ pytest tests/ -v --tb=short
 | 12 | ✅ Complete | `agent` command group |
 | 13 | ✅ Complete | CLI restructure & cleanup |
 | 14 | ✅ Complete | API hardening — CORS + `/projects` REST endpoints |
+| B-C1 | ✅ Complete | Chat DB layer (`backend/db/chat.py`) |
+| B-C2 | ✅ Complete | RAG chat streaming service (`backend/rag/chat.py`) |
+| B-C3 | ✅ Complete | Chat API router (`backend/api/routers/chat.py`) |
+| B-C4 | ✅ Complete | Mount chat router in `app.py`; version → 0.3.0 |
 
 ### Frontend Phases
 
@@ -202,5 +206,10 @@ Interactive docs: `http://localhost:8000/docs`
 | `GET` | `/projects/{id}/graph` | Subgraph (nodes + edges) for canvas rendering |
 | `POST` | `/projects/{id}/link` | Body `{"node_id":"...","relation":"..."}` → link node to project |
 | `GET` | `/projects/{id}/export` | Full subgraph as JSON |
+| `GET` | `/projects/{id}/chat` | List conversations |
+| `POST` | `/projects/{id}/chat` | Create conversation |
+| `GET` | `/projects/{id}/chat/{cid}` | Get conversation + messages |
+| `POST` | `/projects/{id}/chat/{cid}/messages` | Send message (SSE stream) |
+| `DELETE` | `/projects/{id}/chat/{cid}` | Delete conversation |
 
 > **CORS:** The API accepts requests from any origin (`Access-Control-Allow-Origin: *`). Tighten `allow_origins` in `backend/api/app.py` before deploying to production.

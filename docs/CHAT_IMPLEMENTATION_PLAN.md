@@ -199,14 +199,23 @@ data: {"event": "done"}
 **Error handling:** 404 if `project_id` or `conv_id` not found; 503 if embedding
 service unavailable (propagated from `chat_stream`).
 
+> **Implementation note (FastAPI ≥ 0.115):** FastAPI 0.115 rejects a `204` route
+> that declares `→ None` return type because it infers a response body.  The
+> `DELETE` endpoint must be declared as:
+> ```python
+> @router.delete("...", status_code=204, response_class=Response, response_model=None)
+> def delete_conversation_endpoint(...) -> Response:
+>     ...
+>     return Response(status_code=204)
+> ```
+
 ### Validation
 
-- Integration test `tests/test_api_chat.py`:
-  - `test_create_and_list_conversation`
-  - `test_get_conversation_returns_messages`
-  - `test_post_message_streams_sse`  (collect full response, assert token + done events)
-  - `test_delete_conversation_returns_204`
-  - `test_post_message_404_unknown_project`
+- Integration test `tests/test_api_chat.py` (18 tests):
+  - `TestCreateAndListConversation` — create (201 + default title), list all, scope isolation, 404 on unknown project
+  - `TestGetConversation` — returns messages, 404 on unknown conv/project
+  - `TestPostMessage` — SSE stream response, user+assistant persistence, token/done events, 404 on unknown project/conv
+  - `TestDeleteConversation` — 204 response, removes from list, 404 on unknown conv/project
 
 ---
 
@@ -242,8 +251,8 @@ Add the new endpoints to the **Endpoints** table:
 
 ```bash
 uvicorn backend.api.app:app --reload
-# curl http://localhost:8000/docs  →  chat endpoints visible in Swagger UI
-pytest tests/test_api_chat.py -v
+# curl http://localhost:8000/docs  →  chat endpoints visible in Swagger UI (version 0.3.0)
+pytest tests/test_api_chat.py -v   # 18 passed
 ```
 
 ---
@@ -751,8 +760,8 @@ npm run test           # all tests pass
 ```
 [x] B-C1  backend/db/chat.py + tests/test_chat_db.py
 [x] B-C2  backend/rag/chat.py + tests/test_chat_rag.py
-[ ] B-C3  backend/api/routers/chat.py + tests/test_api_chat.py
-[ ] B-C4  app.py mount + README update
+[x] B-C3  backend/api/routers/chat.py + tests/test_api_chat.py
+[x] B-C4  app.py mount + README update
 [ ] F-C1  types/index.ts  (can overlap with B-C1..B-C4)
 [ ] F-C2  api/chat.ts + tests
 [ ] F-C3  stores/chatStore.ts + tests

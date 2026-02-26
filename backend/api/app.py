@@ -31,6 +31,7 @@ from backend.api.routers import search as search_router
 from backend.api.routers import ingest as ingest_router
 from backend.api.routers import agent as agent_router
 from backend.api.routers import projects as projects_router
+from backend.api.routers import chat as chat_router
 
 
 @asynccontextmanager
@@ -55,7 +56,7 @@ def create_app() -> FastAPI:
             "the LangGraph research agent via Server-Sent Events, "
             "and project graph-scoping endpoints."
         ),
-        version="0.2.0",
+        version="0.3.0",
         lifespan=lifespan,
     )
 
@@ -72,6 +73,7 @@ def create_app() -> FastAPI:
     app.include_router(ingest_router.router, prefix="/ingest", tags=["ingest"])
     app.include_router(agent_router.router, prefix="/research", tags=["research"])
     app.include_router(projects_router.router, prefix="/projects", tags=["projects"])
+    app.include_router(chat_router.router, prefix="/projects", tags=["chat"])
 
     return app
 
