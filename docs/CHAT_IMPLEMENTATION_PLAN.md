@@ -778,8 +778,36 @@ npm run test           # all tests pass
 [x] F-C2  api/chat.ts + tests
 [x] F-C3  stores/chatStore.ts + tests
 [x] F-C4  hooks/useChat.ts (useConversationList, useCreateConversation, useDeleteConversation)
-[ ] F-C5  components/chat/* + component tests
-[ ] F-C6  screens/ChatScreen.tsx + screen tests
+[x] F-C5  components/chat/* + component tests
+[x] F-C6  screens/ChatScreen.tsx + screen tests
 [ ] F-C7  App.tsx route + NavBar link + AppShell test update
 [ ] F-C8  Polish: aria, MSW stubs, animation throttle, conversation title edit
 ```
+
+### F-C5 implementation notes
+
+- **`ChatInput`** is a **controlled component** (`useState` for value) so the
+  send button can be naturally disabled when the textarea is empty.  The plan's
+  spec was satisfied; the implementation choice avoids a ref-only approach.
+- **`ConversationList`** delete action uses `<span role="button">` nested inside
+  the row `<button>` to prevent bubbling while enabling keyboard activation and
+  screen-reader labelling.
+- **`CitationList`** opens collapsed=`false` by default (visible on first render).
+- **`MessageBubble`** reads `streamingContent` from the Zustand store directly
+  (not via prop) when `isStreaming=true`, consistent with the store design.
+
+### F-C6 implementation notes
+
+- `ChatScreen` merges server messages with `localMessages` (server messages take
+  precedence when loaded; local messages are appended on top for optimistic UI).
+- The `onDone` callback reads `useChatStore.getState().streamingContent` directly
+  (not through the closure capture) to avoid stale-closure issues with the
+  async SSE stream.
+- `scrollIntoView` is stubbed in `src/test-setup.ts` (`window.HTMLElement.prototype.scrollIntoView = function () {}`)
+  because jsdom does not implement it; this is a global stub that affects all
+  test files without modifying component code.
+- The `vi.mock("../../api/chat", ...)` in `ChatScreen.test.tsx` uses a pure
+  function factory (no local-variable references) because vitest hoists `vi.mock`
+  calls; return values are configured via `vi.mocked(...).mockResolvedValue()` in
+  `beforeEach`.
+
